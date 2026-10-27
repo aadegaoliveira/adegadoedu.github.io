@@ -130,12 +130,27 @@ body:not(.jogando) .cobrar{display:none !important}
 :root:not([data-theme="light"]) .aceite a{color:#8CC8FF}
 .erro{color:var(--vermelho);font-weight:800;min-height:1.2em;margin:10px 0 0}
 .tela{touch-action:pan-y}
-#btnRanking{font-size:1.15rem;padding:4px 10px;cursor:pointer}
+#dinheiro{cursor:pointer}
+#dinheiro .tk{font-size:1rem;margin-left:2px}
+.seletor{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px}
+.seletor button{width:48px;height:48px;border:3px solid var(--contorno);border-radius:14px;background:var(--painel2);font-size:1.6rem;font-weight:900;box-shadow:0 3px 0 var(--contorno)}
+.seletor button:disabled{opacity:.4}
+.seletor b{font-family:'Lilita One','Arial Black',sans-serif;font-size:1.9rem;min-width:7ch;text-align:center}
+.cupom-novo{margin-top:14px;border:3px dashed var(--contorno);border-radius:16px;padding:14px;text-align:center;background:#FFF6D6;color:#2A1A12}
+.cupom-novo .cod{font-family:'Lilita One','Arial Black',sans-serif;font-size:2rem;letter-spacing:.06em;margin:6px 0;user-select:text;-webkit-user-select:text}
+.lista-cp{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.lista-cp li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;background:var(--painel2);border:2.5px solid var(--contorno);border-radius:12px;padding:8px 10px;font-size:.9rem}
+.lista-cp .c{font-weight:900;letter-spacing:.04em;user-select:text;-webkit-user-select:text}
+.lista-cp .st{grid-column:1/-1;color:var(--sub);font-weight:700;font-size:.82rem}
+.lista-cp li.off{opacity:.6}
+#btnRanking,#btnSair{font-size:1.15rem;padding:4px 10px;cursor:pointer}
 .abas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .aba{border:3px solid var(--contorno);border-radius:12px;background:var(--painel2);padding:8px;font-weight:900}
 .aba.ativa{background:var(--amarelo);color:#2A1A12}
 .lista-rk{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px;max-height:52vh;overflow-y:auto}
 .lista-rk li{display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;background:var(--painel2);border:2.5px solid var(--contorno);border-radius:12px;padding:7px 10px}
+.lista-rk li.falido{opacity:.6}
+.lista-rk li.falido .nome{text-decoration:line-through;text-decoration-thickness:2px}
 .lista-rk li.eu{background:#C9F7D8;color:#2A1A12}
 .lista-rk .pos{font-family:'Lilita One','Arial Black',sans-serif;font-size:1.15rem;text-align:center}
 .lista-rk .nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -158,8 +173,9 @@ body:not(.jogando) .alerta{display:none}
 <header class="hud">
   <div class="linha-hud">
     <button class="pilula" id="btnRanking" aria-label="Ver ranking">🏆</button>
-    <div class="pilula" id="dinheiro"><span id="icDin"></span><span id="valDin">0</span></div>
+    <div class="pilula" id="dinheiro" role="button" tabindex="0" aria-label="Trocar dinheiro por cupom de desconto"><span id="icDin"></span><span id="valDin">0</span><span class="tk" aria-hidden="true">🎟️</span></div>
     <div class="pilula" id="taxa">0/min</div>
+    <button class="pilula" id="btnSair" aria-label="Sair do jogo">🚪</button>
   </div>
   <div class="tarefa" id="tarefa"></div>
 </header>
@@ -174,7 +190,7 @@ body:not(.jogando) .alerta{display:none}
 <section class="tela" id="telaCadastro" hidden>
   <div class="caixa">
     <h1 class="titulo grande centro">Adega do Edu</h1>
-    <p class="txt centro">Crie seu perfil de jogador para entrar no ranking de quem mais fatura na adega.</p>
+    <p class="txt centro" id="cadTexto">Crie seu perfil de jogador para entrar no ranking de quem mais fatura na adega.</p>
     <label class="campo"><span>Nome ou apelido</span><input id="cadNome" maxlength="20" autocomplete="nickname" placeholder="Como você quer aparecer no ranking"></label>
     <label class="campo"><span>Idade</span><input id="cadIdade" type="number" inputmode="numeric" min="1" max="120" placeholder="Sua idade"></label>
     <label class="aceite"><input type="checkbox" id="cadAceite"><span>Li e aceito a <a href="privacidade.html" target="_blank" rel="noopener">política de privacidade</a>. Meu nome ou apelido e meu faturamento no jogo vão aparecer no ranking; a idade não aparece.</span></label>
@@ -212,14 +228,49 @@ body:not(.jogando) .alerta{display:none}
   </div>
 </section>
 
+<section class="tela" id="telaCupom" hidden>
+  <div class="caixa">
+    <div class="cabeca"><h2 class="titulo" style="font-size:1.8rem">Trocar por desconto</h2><span class="pilula" id="cpSaldo"></span></div>
+    <p class="txt">Cada <b>1 milhão</b> no jogo vira <b>R$ 1,00</b> de desconto de verdade na Adega do Edu, em produtos não alcoólicos. Limite de <b>R$ 10,00 por mês</b>.</p>
+    <div class="stats"><div class="stat"><span>Dá para trocar agora</span><b id="cpPode">R$ 0,00</b></div><div class="stat"><span>Usado este mês</span><b id="cpMes">R$ 0,00 de R$ 10,00</b></div></div>
+    <div class="seletor"><button type="button" id="cpMenos" aria-label="Diminuir valor">−</button><b id="cpValor">R$ 1,00</b><button type="button" id="cpMais" aria-label="Aumentar valor">+</button></div>
+    <button class="btn" id="cpGerar">Gerar cupom</button>
+    <p class="erro" id="cpErro" role="alert"></p>
+    <div id="cpNovo"></div>
+    <h3>Meus cupons</h3>
+    <ul class="lista-cp" id="cpLista"></ul>
+    <p class="txt" style="font-size:.82rem;color:var(--sub)">Regras: mostre o código no balcão na hora de pagar. Um cupom por compra, não cumulativo com outras promoções, válido por 30 dias e só em produtos não alcoólicos. Exclusivo para maiores de 18 anos.</p>
+    <button class="btn amarelo" id="cpFechar">Voltar ao jogo</button>
+  </div>
+</section>
+
+<section class="tela" id="telaSairConfirma" hidden>
+  <div class="caixa centro">
+    <div style="font-size:3rem;line-height:1" aria-hidden="true">🚪</div>
+    <h2 class="titulo" style="font-size:2.1rem;margin-top:6px">Sair do jogo?</h2>
+    <p class="txt">A adega fecha as portas até você voltar. Enquanto estiver fora, ela não recebe clientes e não fatura nada. Seu progresso e sua posição no ranking ficam guardados.</p>
+    <button class="btn azul" id="btnSairSim">Sair e fechar a adega</button>
+    <button class="btn" id="btnSairNao">Continuar jogando</button>
+  </div>
+</section>
+
+<section class="tela" id="telaSaiu" hidden>
+  <div class="caixa centro">
+    <div style="font-size:3rem;line-height:1" aria-hidden="true">🔒</div>
+    <h2 class="titulo" style="font-size:2.1rem;margin-top:6px" id="saiuTitulo">Adega fechada</h2>
+    <p class="txt">A sua adega está fechada e não vende enquanto você estiver fora. Pode fechar o app tranquilo: tudo fica salvo do jeito que está.</p>
+    <button class="btn" id="btnVoltarJogar">Abrir a adega e jogar</button>
+  </div>
+</section>
+
 <section class="tela" id="telaFalencia" hidden>
   <div class="caixa centro">
     <div style="font-size:3.4rem;line-height:1" aria-hidden="true">📉</div>
     <h2 class="titulo" style="font-size:2.3rem;margin-top:6px">A Adega faliu!</h2>
-    <p class="txt">Os produtos acabaram e não sobrou dinheiro para fazer um novo pedido ao fornecedor. Sem estoque, não tem venda.</p>
-    <div class="cupom"><b>Dica para a próxima:</b> peça reposição antes do estoque zerar e guarde dinheiro para o fornecedor antes de gastar tudo em melhorias. Um operador de caixa faz os pedidos sozinho.</div>
+    <p class="txt" id="falTexto">Os produtos acabaram e não sobrou dinheiro para fazer um novo pedido ao fornecedor. Sem estoque, não tem venda.</p>
+    <div class="cupom"><b>Dica para a próxima:</b> peça reposição antes do estoque zerar e guarde dinheiro para o fornecedor antes de gastar tudo em melhorias.</div>
     <p class="txt" id="falRecorde" style="color:var(--sub)"></p>
-    <button class="btn" id="btnRecomecar">Recomeçar a adega</button>
+    <button class="btn" id="btnRecomecar">Abrir nova adega com outro apelido</button>
   </div>
 </section>
 
@@ -262,9 +313,9 @@ const EST={
 const IDS=['refri','agua','salgadinho','gelo','mercearia'];
 const MARCOS=[10,25,50,100];
 const CUSTO_CAIXA=[0,250], MAX_CAIXAS=2;
-const CUSTO_GERENTE=1800;
+const CUSTO_GERENTE=10000;
 const CUSTO_OPERADOR=[150,1500,9000];
-const CUSTO_MESA=[2500,6000,15000,40000], CUSTO_GARCOM=12000, TEMPO_MESA=7, CHANCE_MESA=0.55;
+const CUSTO_MESA=[2500,6000,15000,40000,80000,150000], CUSTO_GARCOM=12000, TEMPO_MESA=7, CHANCE_MESA=0.55;
 function valorMesa(n){n=n||S.mesas.nivel;return 30*n*Math.pow(2,marcosAte(n))*multPrest();}
 function custoMesaNivel(){return Math.ceil(1200*Math.pow(1.2,S.mesas.nivel-1));}
 const MAX_LETREIRO=15, MAX_CAIXA_V=12;
@@ -279,6 +330,8 @@ let S;
 try{S=JSON.parse(localStorage.getItem(CHAVE));}catch(e){}
 if(!S||!S.est) S=estadoNovo();
 if(S.operadores===undefined){S.operadores=0;S.cobrados=0;}
+const MAX_OPERADORES=1;
+if(S.operadores>MAX_OPERADORES) S.operadores=MAX_OPERADORES;
 if(!S.est.mercearia){S.est.mercearia={aberta:false,nivel:1};}
 if(!S.mesas){S.mesas={n:0,nivel:1,garcom:false};}
 IDS.forEach(id=>{const e=S.est[id]; if(e.estoque===undefined){e.estoque=20+2*(e.nivel-1); e.pedido=0;}}); if(S.pedidos===undefined) S.pedidos=0;
@@ -548,7 +601,7 @@ function atualizarEstacoes(){
 }
 
 // ---------- Mesas para consumo no local ----------
-const MESAS_POS=[[-3.8,2.4],[-2.5,2.4],[-3.8,4.1],[-2.5,4.1]], Z_CORREDOR=3.25;
+const MESAS_POS=[[-3.8,2.4],[-2.5,2.4],[-3.8,4.1],[-2.5,4.1],[0.5,2.4],[0.5,4.1]], Z_CORREDOR=3.25;
 const mesasObj=[], assentos=[];
 const matMesa=toon(0x8B5A34), matCadeira=toon(0xD9643A), matCopo=new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:0.6,roughness:0.1});
 MESAS_POS.forEach((p,i)=>{
@@ -788,7 +841,7 @@ function recolherMesa(i,auto){
   if(!auto){ SOM.coletar(); voarNotas(p,4); }
   atualizarHUD(true); return true;
 }
-const botoesMesa=[0,1,2,3].map(i=>{
+const botoesMesa=MESAS_POS.map((_,i)=>{
   const b=document.createElement('button'); b.type='button'; b.className='cobrar mesa';
   b.innerHTML='<span class="ln"><span class="cart">🧹</span><span class="tx"></span></span>';
   b.addEventListener('pointerdown',e=>e.stopPropagation());
@@ -797,7 +850,7 @@ const botoesMesa=[0,1,2,3].map(i=>{
 });
 function posicionarMesas(){
   const jogando=document.body.classList.contains('jogando');
-  for(let i=0;i<4;i++){
+  for(let i=0;i<MESAS_POS.length;i++){
     const b=botoesMesa[i]; let v=0;
     assentos.forEach(a=>{ if(a.mesa===i&&a.estado==='sujo') v+=a.valor; });
     if(!jogando||v<=0||S.mesas.garcom){ b.style.display='none'; continue; }
@@ -870,7 +923,7 @@ function cap(id,n){n=n||S.est[id].nivel;return 20+2*(n-1);}
 function custoUnit(id){return Math.max(1,Math.round(valorEst(id)*0.4));}
 function faltando(id){const e=S.est[id];return Math.max(0,cap(id)-e.estoque-e.pedido);}
 function custoPedido(id){return faltando(id)*custoUnit(id);}
-const autoRepor=()=>S.operadores>0||S.gerente;
+const autoRepor=()=>false; // reposição sempre manual: o jogador faz os pedidos
 function atualizarProdutos(id){
   const o=objEst[id]; if(!o||!o.prods||!o.prods.length) return;
   if(!o.ordem) o.ordem=o.prods.map((_,i)=>i).sort(()=>Math.random()-0.5);
@@ -963,7 +1016,7 @@ async function garantirRegistro(){
 }
 let ultimoEnvio='';
 async function sincronizar(){
-  if(!rankingAtivo()||!S.perfil) return;
+  if(!rankingAtivo()||!S.perfil||S.falido) return;
   checarMes();
   if(!S.perfil.id){ await garantirRegistro(); if(!S.perfil.id) return; }
   const k=Math.floor(S.total)+'|'+S.mes; if(k===ultimoEnvio) return;
@@ -972,10 +1025,10 @@ async function sincronizar(){
 }
 setInterval(sincronizar,45000);
 let abaRk='mes';
-function linhaRk(pos,nome,valor,eu){
-  const li=document.createElement('li'); if(eu) li.className='eu';
+function linhaRk(pos,nome,valor,eu,falido){
+  const li=document.createElement('li'); li.className=(eu?'eu ':'')+(falido?'falido':'');
   const p=document.createElement('span'); p.className='pos'; p.textContent=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':pos+'º';
-  const n=document.createElement('span'); n.className='nome'; n.textContent=nome+(eu?' (você)':'');
+  const n=document.createElement('span'); n.className='nome'; n.textContent=(falido?'📉 ':'')+nome+(eu?' (você)':''); if(falido) li.title=nome+' faliu';
   const v=document.createElement('span'); v.className='val'; v.innerHTML=NOTA; v.appendChild(document.createTextNode(' '+fmt(valor)));
   li.append(p,n,v); return li;
 }
@@ -993,7 +1046,7 @@ async function abrirRanking(aba){
     const rows=await rpc('ver_ranking',{p_mes:abaRk==='mes'?mesAtual():null,p_id:S.perfil&&S.perfil.id?S.perfil.id:null})||[];
     info.textContent=rows.length?(abaRk==='mes'?'O ranking do mês recomeça no dia 1º.':'Faturamento total desde o início do jogo.'):'Ninguém pontuou ainda. Seja o primeiro!';
     let ant=0;
-    rows.forEach(r=>{ if(r.posicao>ant+1&&ant>=50){ const sep=document.createElement('li'); sep.className='sep'; sep.textContent='⋯'; lista.appendChild(sep); } lista.appendChild(linhaRk(r.posicao,r.apelido,r.valor,r.eu)); ant=r.posicao; });
+    rows.forEach(r=>{ if(r.posicao>ant+1&&ant>=50){ const sep=document.createElement('li'); sep.className='sep'; sep.textContent='⋯'; lista.appendChild(sep); } lista.appendChild(linhaRk(r.posicao,r.apelido,r.valor,r.eu,r.falido)); ant=r.posicao; });
   }catch(e){ info.textContent='Não foi possível carregar o ranking agora. Confira a internet e tente de novo.'; }
 }
 $('#btnRanking').addEventListener('click',()=>{SOM.abrir();abrirRanking();});
@@ -1015,6 +1068,7 @@ $('#btnCadastrar').addEventListener('click',async()=>{
   const nome=$('#cadNome').value.replace(/\s+/g,' ').trim(), idade=parseInt($('#cadIdade').value,10), err=$('#cadErro');
   if(nome.length<2){ err.textContent='Digite um nome ou apelido com pelo menos 2 letras.'; $('#cadNome').focus(); return; }
   if(!idade||idade<1||idade>120){ err.textContent='Digite a sua idade.'; $('#cadIdade').focus(); return; }
+  if((S.apelidosFalidos||[]).includes(nome.toLowerCase())){ err.textContent='Esse apelido faliu e não pode abrir outra adega. Escolha um apelido novo.'; $('#cadNome').focus(); return; }
   if(idade<18){ err.textContent=msgCadastro.idade_minima; return; }
   if(!$('#cadAceite').checked){ err.textContent='Para continuar, aceite a política de privacidade.'; return; }
   let id=null, token=null;
@@ -1063,25 +1117,134 @@ function semSaida(){
   return S.din<Math.min(...abertas.map(custoUnit));
 }
 let tFalencia=0;
-function checarFalencia(dt){
-  if(!semSaida()){ tFalencia=0; return; }
-  tFalencia+=dt; if(tFalencia<3) return;
-  tFalencia=0; document.body.classList.remove('jogando'); fecharPainel();
-  $('#falRecorde').textContent=S.perfil&&rankingAtivo()?`O seu melhor faturamento (${fmt(S.total)}) continua guardado no ranking.`:'';
-  sincronizar(); SOM.erro(); $('#telaFalencia').hidden=false;
+function mostrarFalencia(){
+  document.body.classList.remove('jogando'); fecharPainel();
+  const nome=S.falidoApelido||(S.perfil&&S.perfil.apelido)||'';
+  $('#falTexto').textContent=`${nome?'A adega de '+nome+' fechou as portas. ':''}Os produtos acabaram e não sobrou dinheiro para um novo pedido ao fornecedor. Essa adega não pode ser reaberta: para jogar de novo, abra uma nova adega com outro apelido.`;
+  $('#falRecorde').textContent=nome&&rankingAtivo()?`O faturamento de ${nome} (${fmt(S.total)}) fica no ranking com a marca 📉.`:'';
+  $('#telaFalencia').hidden=false;
 }
-function recomecar(){
-  const perfil=S.perfil, fal=(S.falencias||0)+1;
+async function declararFalencia(){
+  S.falido=true; S.falidoApelido=S.perfil?S.perfil.apelido:'';
+  S.apelidosFalidos=(S.apelidosFalidos||[]); if(S.falidoApelido) S.apelidosFalidos.push(S.falidoApelido.toLowerCase());
+  salvar(); SOM.erro(); mostrarFalencia();
+  if(rankingAtivo()&&S.perfil&&S.perfil.id){
+    try{ await sincronizar(); await rpc('declarar_falencia',{p_id:S.perfil.id,p_token:S.perfil.token}); S.falenciaEnviada=true; salvar(); }catch(e){}
+  }
+}
+async function reenviarFalencia(){
+  if(S.falido&&!S.falenciaEnviada&&rankingAtivo()&&S.perfil&&S.perfil.id){
+    try{ await rpc('declarar_falencia',{p_id:S.perfil.id,p_token:S.perfil.token}); S.falenciaEnviada=true; salvar(); }catch(e){}
+  }
+}
+function checarFalencia(dt){
+  if(S.falido||!semSaida()){ tFalencia=0; return; }
+  tFalencia+=dt; if(tFalencia<3) return;
+  tFalencia=0; declararFalencia();
+}
+function novaAdega(){
+  const falidos=S.apelidosFalidos||[], fal=(S.falencias||0)+1;
   clientes.forEach(c=>scene.remove(c.g)); clientes.length=0; fila=[]; IDS.forEach(id=>vagasEst[id]=[null,null,null]); pagando.fill(null); pilhaValor=0;
   baloesCobrar.forEach(b=>b.style.display='none');
   assentos.forEach(a=>{a.estado='livre';a.valor=0;a.cliente=null;a.t=0;a.copo.visible=false;a.nota.visible=false;});
   FORN.estado='ocioso'; FORN.fila.length=0; FORN.ent.lista=[]; FORN.ent.estado=''; entregador.visible=false; caminhao.visible=false;
-  S=estadoNovo(); S.viuInicio=true; S.perfil=perfil; S.falencias=fal; S.pedidos=0; S.mes=mesAtual(); S.totalInicioMes=0;
+  S=estadoNovo(); S.viuInicio=true; S.apelidosFalidos=falidos; S.falencias=fal; S.pedidos=0; S.mes=mesAtual(); S.totalInicioMes=0;
   IDS.forEach(id=>{const e=S.est[id]; e.estoque=cap(id); e.pedido=0;});
   salvar(); atualizarEstacoes(); atualizarMesas(); atualizarEquipe(); IDS.forEach(atualizarProdutos);
-  cacheTarefa=''; $('#telaFalencia').hidden=true; document.body.classList.add('jogando'); SOM.marco(); atualizarHUD(true);
+  cacheTarefa=''; ultimoEnvio=''; $('#telaFalencia').hidden=true;
+  $('#cadNome').value=''; $('#cadErro').textContent='';
+  $('#cadTexto').textContent='Sua nova adega começa do zero. Escolha um apelido novo para entrar no ranking.';
+  mostrarCadastro(); setTimeout(()=>$('#cadNome').focus(),50);
 }
-$('#btnRecomecar').addEventListener('click',recomecar);
+$('#btnRecomecar').addEventListener('click',novaAdega);
+
+// ================= Cupons de desconto =================
+const MOEDAS_POR_REAL=1000000, LIMITE_MES_REAIS=10;
+const cp={usadoMes:0,valor:1,online:false};
+const reais=c=>'R$ '+(c/100).toFixed(2).replace('.',',');
+const dataBR=d=>new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+function maxTroca(){ return Math.max(0,Math.min(Math.floor(S.din/MOEDAS_POR_REAL),LIMITE_MES_REAIS-Math.round(cp.usadoMes/100))); }
+function renderCupom(){
+  const m=maxTroca(); cp.valor=Math.min(Math.max(1,cp.valor),Math.max(1,m));
+  $('#cpSaldo').innerHTML=NOTA+' '+fmt(S.din);
+  $('#cpPode').textContent=reais(m*100);
+  $('#cpMes').textContent=reais(cp.usadoMes)+' de '+reais(LIMITE_MES_REAIS*100);
+  $('#cpValor').textContent=reais(cp.valor*100);
+  $('#cpMenos').disabled=cp.valor<=1; $('#cpMais').disabled=cp.valor>=m;
+  const g=$('#cpGerar');
+  g.disabled=!cp.online||m<1;
+  g.textContent=!cp.online?'Cupons indisponíveis':m>=1?`Gerar cupom de ${reais(cp.valor*100)}`:(cp.usadoMes>=LIMITE_MES_REAIS*100?'Limite do mês atingido':'Junte 1 milhão para trocar');
+}
+function renderListaCupons(rows){
+  const ul=$('#cpLista'); ul.innerHTML='';
+  if(!rows.length){ const li=document.createElement('li'); li.className='off'; li.textContent='Você ainda não gerou cupons.'; ul.appendChild(li); return; }
+  rows.forEach(r=>{
+    const li=document.createElement('li'), c=document.createElement('span'), v=document.createElement('b'), st=document.createElement('span');
+    const usado=!!r.usado_em, venc=!usado&&new Date(r.expira_em)<new Date();
+    c.className='c'; c.textContent=r.codigo; v.textContent=reais(r.valor_centavos); st.className='st';
+    st.textContent=usado?'✔ Usado em '+dataBR(r.usado_em):venc?'Expirado em '+dataBR(r.expira_em):'Válido até '+dataBR(r.expira_em);
+    if(usado||venc) li.className='off';
+    li.append(c,v,st); ul.appendChild(li);
+  });
+}
+async function carregarCupons(){
+  try{
+    const rows=await rpc('meus_cupons',{p_id:S.perfil.id,p_token:S.perfil.token})||[];
+    const mes=mesAtual(); cp.usadoMes=rows.filter(r=>r.mes===mes).reduce((t,r)=>t+r.valor_centavos,0);
+    renderListaCupons(rows); renderCupom();
+  }catch(e){ $('#cpErro').textContent='Não foi possível carregar seus cupons. Confira a internet.'; }
+}
+function abrirCupom(){
+  fecharPainel(); $('#cpErro').textContent=''; $('#cpNovo').innerHTML=''; $('#cpLista').innerHTML='';
+  cp.online=rankingAtivo()&&!!(S.perfil&&S.perfil.id)&&!S.falido;
+  $('#telaCupom').hidden=false; renderCupom();
+  if(!cp.online){ $('#cpErro').textContent=rankingAtivo()?'Para gerar cupons, o seu cadastro precisa estar conectado à internet. Tente de novo em instantes.':'Os cupons ainda não foram ligados pela Adega do Edu.'; garantirRegistro(); return; }
+  carregarCupons();
+}
+const msgCupom={saldo_insuficiente:'Seu faturamento registrado no ranking ainda não chega a esse valor. Jogue mais um pouco e tente de novo.',limite_mensal:'Você já chegou ao limite de R$ 10,00 em cupons este mês.',jogador_falido:'Essa adega faliu e não pode gerar cupons.',valor_invalido:'Escolha um valor entre R$ 1,00 e R$ 10,00.'};
+$('#dinheiro').addEventListener('click',()=>{ SOM.abrir(); abrirCupom(); });
+$('#dinheiro').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); abrirCupom(); } });
+$('#cpMenos').addEventListener('click',()=>{ cp.valor--; renderCupom(); });
+$('#cpMais').addEventListener('click',()=>{ cp.valor++; renderCupom(); });
+$('#cpFechar').addEventListener('click',()=>{ $('#telaCupom').hidden=true; });
+$('#cpGerar').addEventListener('click',async()=>{
+  const g=$('#cpGerar'), err=$('#cpErro'), v=cp.valor;
+  if(g.disabled) return;
+  if(S.din<v*MOEDAS_POR_REAL){ err.textContent='Você não tem dinheiro suficiente no jogo para esse valor.'; return; }
+  g.disabled=true; g.textContent='Gerando cupom…'; err.textContent='';
+  try{
+    ultimoEnvio=''; await sincronizar();
+    const r=await rpc('trocar_por_cupom',{p_id:S.perfil.id,p_token:S.perfil.token,p_reais:v}); const l=Array.isArray(r)?r[0]:r;
+    S.din-=v*MOEDAS_POR_REAL; salvar(); atualizarHUD(true); SOM.marco();
+    const box=document.createElement('div'); box.className='cupom-novo';
+    const t1=document.createElement('div'); t1.textContent='Seu cupom de '+reais(l.cupom_centavos)+':';
+    const cod=document.createElement('div'); cod.className='cod'; cod.textContent=l.cupom_codigo;
+    const t2=document.createElement('div'); t2.textContent='Mostre este código no balcão da Adega do Edu. Válido até '+dataBR(l.cupom_expira)+'.';
+    box.append(t1,cod,t2); $('#cpNovo').innerHTML=''; $('#cpNovo').appendChild(box);
+    await carregarCupons();
+  }catch(e){
+    const k=Object.keys(msgCupom).find(c=>e.message.indexOf(c)>=0);
+    err.textContent=k?msgCupom[k]:'Não foi possível gerar o cupom agora. Confira a internet e tente de novo.';
+    renderCupom();
+  }
+});
+
+// ================= Sair do jogo =================
+function mostrarSaiu(){
+  document.body.classList.remove('jogando'); fecharPainel();
+  $('#saiuTitulo').textContent=S.perfil?`Até logo, ${S.perfil.apelido}!`:'Adega fechada';
+  $('#telaSairConfirma').hidden=true; $('#telaSaiu').hidden=false;
+}
+$('#btnSair').addEventListener('click',()=>{ SOM.abrir(); fecharPainel(); $('#telaSairConfirma').hidden=false; });
+$('#btnSairNao').addEventListener('click',()=>{ $('#telaSairConfirma').hidden=true; });
+$('#btnSairSim').addEventListener('click',async()=>{
+  S.saiu=true; salvar(); mostrarSaiu();
+  try{ await sincronizar(); }catch(e){}
+});
+$('#btnVoltarJogar').addEventListener('click',()=>{
+  S.saiu=false; S.salvo=Date.now(); salvar();
+  $('#telaSaiu').hidden=true; document.body.classList.add('jogando'); SOM.abrir(); atualizarHUD(true);
+});
 
 // ================= Ganhos =================
 const ganhos=[];
@@ -1160,10 +1323,10 @@ function renderSelos(){
     else { const pct=Math.round(100*e.estoque/cap(id)), baixo=pct<=35, vazio=e.estoque<=0;
       setSelo(b,'selo'+(vazio?' vazio':'')+(baixo?' baixo':'')+(S.din>=custoEst(id)?' pode':''),`${EST[id].ic} Nv ${e.nivel} <span class="mini"><i style="width:${pct}%"></i></span>${e.pedido>0?'🚚':''}<span class="seta">▲</span>`,`${EST[id].nome}, nível ${e.nivel}, estoque ${e.estoque} de ${cap(id)}`); }
   });
-  const podeCx=(S.operadores>0&&S.caixaV<MAX_CAIXA_V&&S.din>=custoCaixaV())||(S.caixas<MAX_CAIXAS&&S.din>=CUSTO_CAIXA[S.caixas]*multPrest())||(S.operadores<S.caixas&&S.din>=CUSTO_OPERADOR[S.operadores]*multPrest())||(!S.gerente&&S.din>=CUSTO_GERENTE*multPrest());
+  const podeCx=(S.operadores>0&&S.caixaV<MAX_CAIXA_V&&S.din>=custoCaixaV())||(S.caixas<MAX_CAIXAS&&S.din>=CUSTO_CAIXA[S.caixas]*multPrest())||(S.operadores<Math.min(S.caixas,MAX_OPERADORES)&&S.din>=CUSTO_OPERADOR[S.operadores]*multPrest())||(!S.gerente&&S.din>=CUSTO_GERENTE*multPrest());
   setSelo(selos.caixa,'selo'+(podeCx?' pode':''),`🧾 Caixa<span class="seta">▲</span>`,'Caixa');
   if(!S.mesas.n) setSelo(selos.mesas,'selo fechado'+(S.din>=CUSTO_MESA[0]*multPrest()?' pode':''),`🔒 🍽️ ${NOTA} ${fmt(CUSTO_MESA[0]*multPrest())}`,'Abrir mesas');
-  else { const pm=S.din>=custoMesaNivel()||(S.mesas.n<4&&S.din>=CUSTO_MESA[S.mesas.n]*multPrest())||(!S.mesas.garcom&&S.din>=CUSTO_GARCOM*multPrest()); setSelo(selos.mesas,'selo'+(pm?' pode':''),`🍽️ Nv ${S.mesas.nivel}<span class="seta">▲</span>`,`Mesas, nível ${S.mesas.nivel}`); }
+  else { const pm=S.din>=custoMesaNivel()||(S.mesas.n<MESAS_POS.length&&S.din>=CUSTO_MESA[S.mesas.n]*multPrest())||(!S.mesas.garcom&&S.din>=CUSTO_GARCOM*multPrest()); setSelo(selos.mesas,'selo'+(pm?' pode':''),`🍽️ Nv ${S.mesas.nivel}<span class="seta">▲</span>`,`Mesas, nível ${S.mesas.nivel}`); }
   const podeL=S.letreiro<MAX_LETREIRO&&S.din>=custoLetreiro();
   setSelo(selos.letreiro,'selo'+(podeL?' pode':''),`📣 Nv ${S.letreiro}<span class="seta">▲</span>`,'Letreiro da calçada');
 }
@@ -1199,26 +1362,26 @@ function renderPainel(){
         <div class="stat"><span>Estoque</span><b>${e.estoque} / ${cap(k)}${e.pedido>0?` <span class="prox">🚚 +${e.pedido} a caminho</span>`:''}</b></div>
         <div class="stat"><span>Custo por unidade</span><b>${fmt(custoUnit(k))}</b></div>
       </div>`+(faltando(k)>0?(qtdPossivel(k)>0&&qtdPossivel(k)<faltando(k)?btnCusto(qtdPossivel(k)*custoUnit(k),`🚚 Pedir +${qtdPossivel(k)} un.`,'bPedir'):btnCusto(custoPedido(k),`🚚 Pedir +${faltando(k)} un.`,'bPedir')):`<button class="btn azul" disabled>${e.pedido>0?'Pedido a caminho':'Estoque completo'}</button>`)+
-      `<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700;line-height:1.35">${autoRepor()?'Reposição automática ligada: o '+(S.gerente?'gerente':'operador')+' faz o pedido ao fornecedor quando o estoque baixa.':'Contrate um operador de caixa ou o gerente para fazerem os pedidos sozinhos.'}</p>`+(prox?`<div class="marcos"><span>Nv ${prox}: valor x2 e mais rápido</span><div class="trilho"><i style="width:${100*(e.nivel-ant)/(prox-ant)}%"></i></div></div>`:'')+
+      `<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700;line-height:1.35">Fique de olho no estoque: quando ele zera, os clientes não compram. Faça o pedido ao fornecedor antes de acabar.</p>`+(prox?`<div class="marcos"><span>Nv ${prox}: valor x2 e mais rápido</span><div class="trilho"><i style="width:${100*(e.nivel-ant)/(prox-ant)}%"></i></div></div>`:'')+
       `<div class="duas">${btnCusto(custoEst(k),'Melhorar','bAcao')}<button class="btn amarelo" id="bMax">Máximo<small id="bMaxTxt"></small></button></div>`;
     }
   } else if(k==='caixa'){
     const manual=S.caixas-S.operadores;
-    h+=`<div class="cab"><div class="ic">🧾</div><div><h3>Caixa</h3><p>${S.caixas} ${S.caixas>1?'caixas abertos':'caixa aberto'}, ${S.operadores} com operador${S.gerente?' e gerente':''}</p></div></div>
-    <p style="margin:10px 2px 0;color:var(--sub);font-size:.86rem;font-weight:700;line-height:1.35">${manual?'Nos caixas sem operador, você cobra tocando no balão. Quanto mais rápido, maior a gorjeta.':'Os operadores cobram sozinhos e o dinheiro vai para a pilha. Você ainda pode tocar no balão para cobrar na hora e ganhar gorjeta.'}</p>
+    h+=`<div class="cab"><div class="ic">🧾</div><div><h3>Caixa</h3><p>${S.caixas} ${S.caixas>1?'caixas abertos':'caixa aberto'}, ${S.operadores?'1 automático':'nenhum automático'}${S.gerente?' e gerente':''}</p></div></div>
+    <p style="margin:10px 2px 0;color:var(--sub);font-size:.86rem;font-weight:700;line-height:1.35">${S.operadores?'O operador cobra sozinho no 1º caixa e o dinheiro vai para a pilha. '+(S.caixas>1?'O 2º caixa é sempre cobrado por você, tocando no balão. ':''):'Você cobra tocando no balão. Quanto mais rápido, maior a gorjeta. '}Só um caixa pode ter operador, e tudo funciona apenas com o jogo aberto.</p>
     <div class="stats"><div class="stat"><span>Tempo do operador</span><b>${tempoPagar().toFixed(1).replace('.',',')} s${S.caixaV<MAX_CAIXA_V?` <span class="prox">→ ${tempoPagar(S.caixaV+1).toFixed(1).replace('.',',')} s</span>`:''}</b></div></div>`+
-    (S.operadores<S.caixas?btnCusto(CUSTO_OPERADOR[S.operadores]*multPrest(),'Contratar operador','bOper'):'')+
+    (S.operadores<Math.min(S.caixas,MAX_OPERADORES)?btnCusto(CUSTO_OPERADOR[S.operadores]*multPrest(),'Contratar operador','bOper'):'')+
     (S.caixas<MAX_CAIXAS?btnCusto(CUSTO_CAIXA[S.caixas]*multPrest(),`Abrir ${S.caixas+1}º caixa`,'bCaixa'):'')+
-    (S.operadores>0?(S.caixaV<MAX_CAIXA_V?btnCusto(custoCaixaV(),'Operadores mais rápidos','bAcao'):'<button class="btn" disabled>Velocidade máxima</button>'):'')+
-    (!S.gerente?btnCusto(CUSTO_GERENTE*multPrest(),'Contratar gerente','bGerente')+`<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700">O gerente recolhe a pilha de dinheiro sozinho e a adega rende mais com o jogo fechado.</p>`:'');
+    (S.operadores>0?(S.caixaV<MAX_CAIXA_V?btnCusto(custoCaixaV(),'Operador mais rápido','bAcao'):'<button class="btn" disabled>Velocidade máxima</button>'):'')+
+    (!S.gerente?btnCusto(CUSTO_GERENTE*multPrest(),'Contratar gerente','bGerente')+`<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700">O gerente recolhe a pilha de dinheiro sozinho enquanto você joga.</p>`:'');
   } else if(k==='mesas'){
     const M=S.mesas;
-    h+=`<div class="cab"><div class="ic">🍽️</div><div><h3>Mesas para consumo no local</h3><p>${M.n?M.n+' de 4 mesas · nível '+M.nivel:'Ainda fechadas'}</p></div></div>
+    h+=`<div class="cab"><div class="ic">🍽️</div><div><h3>Mesas para consumo no local</h3><p>${M.n?M.n+' de '+MESAS_POS.length+' mesas · nível '+M.nivel:'Ainda fechadas'}</p></div></div>
     <p style="margin:10px 2px 0;color:var(--sub);font-size:.86rem;font-weight:700;line-height:1.35">Depois de pagar, alguns clientes sentam para consumir. Quando saem, deixam um valor extra na mesa${M.garcom?', e o garçom recolhe sozinho.':': toque em “Recolher” para pegar.'}</p>
     <div class="stats"><div class="stat"><span>Valor deixado por cliente</span><b>${fmt(valorMesa())}${M.n?` <span class="prox">→ ${fmt(valorMesa(M.nivel+1))}</span>`:''}</b></div></div>`+
     (!M.n?btnCusto(CUSTO_MESA[0]*multPrest(),'Abrir as mesas','bMesaNova'):
       btnCusto(custoMesaNivel(),'Melhorar','bAcao')+
-      (M.n<4?btnCusto(CUSTO_MESA[M.n]*multPrest(),`Comprar ${M.n+1}ª mesa`,'bMesaNova'):'')+
+      (M.n<MESAS_POS.length?btnCusto(CUSTO_MESA[M.n]*multPrest(),`Comprar ${M.n+1}ª mesa`,'bMesaNova'):'')+
       (!M.garcom?btnCusto(CUSTO_GARCOM*multPrest(),'Contratar garçom','bGarcom'):''));
   } else if(k==='letreiro'){
     h+=`<div class="cab"><div class="ic">📣</div><div><h3>Letreiro da calçada</h3><p>Atrai mais clientes para a adega.</p></div></div>
@@ -1232,7 +1395,7 @@ function renderPainel(){
   const bp=$('#bPedir'); if(bp) bp.onclick=()=>{ if(pedir(k)) renderPainel(); };
   const bmn=$('#bMesaNova'); if(bmn) bmn.onclick=()=>{const c=CUSTO_MESA[S.mesas.n]*multPrest(); if(S.din<c) return; S.din-=c; S.mesas.n++; atualizarMesas(); atualizarEquipe(); festa(mesasObj[S.mesas.n-1].g.position); comprado();};
   const bgc=$('#bGarcom'); if(bgc) bgc.onclick=()=>{const c=CUSTO_GARCOM*multPrest(); if(S.din<c) return; S.din-=c; S.mesas.garcom=true; atualizarEquipe(); comprado();};
-  const bo=$('#bOper'); if(bo) bo.onclick=()=>{const c=CUSTO_OPERADOR[S.operadores]*multPrest(); if(S.din<c) return; S.din-=c; S.operadores++; comprado(); atualizarEquipe();};
+  const bo=$('#bOper'); if(bo) bo.onclick=()=>{const c=CUSTO_OPERADOR[S.operadores]*multPrest(); if(S.din<c||S.operadores>=MAX_OPERADORES) return; S.din-=c; S.operadores++; comprado(); atualizarEquipe();};
   const bg=$('#bGerente'); if(bg) bg.onclick=()=>{const c=CUSTO_GERENTE*multPrest(); if(S.din<c) return; S.din-=c; S.gerente=true; comprado(); atualizarEquipe();};
   const bm=$('#bMax');
   if(bm){ const n=quantosCompra(k); $('#bMaxTxt').textContent=n?`+${n} níveis`:'sem dinheiro'; bm.disabled=!n; bm.onclick=()=>{ const n2=quantosCompra(k); for(let i=0;i<n2;i++) acao(k,true); comprado(); }; }
@@ -1305,6 +1468,8 @@ function comecar(){
 $('#btnComecar').onclick=comecar;
 let ganhoOff=0;
 function verificarOffline(){
+  return false; // a adega só fatura com o jogo aberto
+  if(S.saiu) return false;
   const seg=Math.min((Date.now()-(S.salvo||Date.now()))/1000,4*3600);
   if(!S.viuInicio||seg<60) return false;
   const fator=S.gerente?0.6:(S.operadores?0.25:0.1);
@@ -1373,7 +1538,9 @@ function renderPainelLeve(){
 if(document.fonts&&document.fonts.load){ document.fonts.load('150px "Lilita One"').then(desenharPlaca).catch(()=>{}); }
 atualizarEstacoes(); atualizarMesas(); atualizarEquipe(); IDS.forEach(atualizarProdutos); atualizarHUD();
 if(S.mes===undefined){ S.mes=mesAtual(); S.totalInicioMes=S.total; }
-if(!S.perfil){ mostrarCadastro(); }
+if(S.falido){ $('#telaInicio').hidden=true; mostrarFalencia(); reenviarFalencia(); }
+else if(!S.perfil){ mostrarCadastro(); }
+else if(S.saiu){ $('#telaInicio').hidden=true; mostrarSaiu(); }
 else if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); sincronizar(); }
 laco();
 })();
