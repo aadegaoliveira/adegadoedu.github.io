@@ -358,17 +358,17 @@ const TAREFAS=[
   {txt:'Peça reposição de produtos ao fornecedor',ic:'🚚',meta:()=>[Math.min(S.pedidos||0,1),1],premio:30},
   {txt:'Melhore a geladeira de refri até o nível 5',ic:'🥤',meta:()=>[Math.min(S.est.refri.nivel,5),5],premio:40},
   {txt:'Abra a geladeira de água e suco',ic:'💧',meta:()=>[S.est.agua.aberta?1:0,1],premio:80},
-  {txt:'Contrate um operador de caixa',ic:'🧑‍💼',meta:()=>[Math.min(S.operadores,1),1],premio:120},
   {txt:'Melhore o letreiro da calçada até o nível 4',ic:'📣',meta:()=>[Math.min(S.letreiro,4),4],premio:150},
-  {txt:'Abra o segundo caixa',ic:'🧾',meta:()=>[Math.min(S.caixas,2)-1,1],premio:250},
-  {txt:'Leve a geladeira de refri ao nível 10',ic:'⭐',meta:()=>[Math.min(S.est.refri.nivel,10),10],premio:300},
-  {txt:'Abra a prateleira de salgadinhos',ic:'🍿',meta:()=>[S.est.salgadinho.aberta?1:0,1],premio:500},
-  {txt:'Abra as mesas para consumo no local',ic:'🍽️',meta:()=>[Math.min(S.mesas.n,1),1],premio:600},
-  {txt:'Contrate o gerente para recolher o dinheiro sozinho',ic:'👔',meta:()=>[S.gerente?1:0,1],premio:800},
+  {txt:'Abra a prateleira de salgadinhos',ic:'🍿',meta:()=>[S.est.salgadinho.aberta?1:0,1],premio:300},
+  {txt:'Contrate um operador de caixa',ic:'🧑‍💼',meta:()=>[Math.min(S.operadores,1),1],premio:500},
+  {txt:'Leve a geladeira de refri ao nível 10',ic:'⭐',meta:()=>[Math.min(S.est.refri.nivel,10),10],premio:400},
+  {txt:'Abra as mesas para consumo no local',ic:'🍽️',meta:()=>[Math.min(S.mesas.n,1),1],premio:800},
+  {txt:'Abra o segundo caixa',ic:'🧾',meta:()=>[Math.min(S.caixas,2)-1,1],premio:1500},
   {txt:'Abra o freezer de gelo',ic:'🧊',meta:()=>[S.est.gelo.aberta?1:0,1],premio:1500},
-  {txt:'Abra a mercearia',ic:'🛒',meta:()=>[S.est.mercearia.aberta?1:0,1],premio:4000},
-  {txt:'Leve todos os setores da loja ao nível 25',ic:'🏆',meta:()=>[IDS.filter(i=>S.est[i].aberta&&S.est[i].nivel>=25).length,IDS.length],premio:8000},
-  {txt:'Fature 150 mil nesta adega',ic:'💰',meta:()=>[Math.min(S.total,150000*multPrest()),150000*multPrest()],premio:10000}
+  {txt:'Contrate o gerente para recolher o dinheiro sozinho',ic:'👔',meta:()=>[S.gerente?1:0,1],premio:3000},
+  {txt:'Abra a mercearia',ic:'🛒',meta:()=>[S.est.mercearia.aberta?1:0,1],premio:6000},
+  {txt:'Leve todos os setores da loja ao nível 25',ic:'🏆',meta:()=>[IDS.filter(i=>S.est[i].aberta&&S.est[i].nivel>=25).length,IDS.length],premio:10000},
+  {txt:'Fature 150 mil nesta adega',ic:'💰',meta:()=>[Math.min(S.total,150000*multPrest()),150000*multPrest()],premio:15000}
 ];
 
 // ================= Som =================

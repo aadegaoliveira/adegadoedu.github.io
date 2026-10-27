@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Balcão · Validar cupom · Adega do Edu</title>
+<style>
+:root{
+  --fundo:#F3F6F1; --cartao:#FFFFFF; --texto:#1C2420; --sub:#56625B; --borda:#2A1A12; --verde:#24804F; --verde-claro:#E3F6EA; --vermelho:#C2362B; --vermelho-claro:#FDE7E4; --amarelo:#FFC93C;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --fundo:#17241E; --cartao:#21302A; --texto:#ECF1ED; --sub:#A9B7AF; --borda:#0B120E; --verde-claro:#1E3A2A; --vermelho-claro:#3E2220; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --fundo:#17241E; --cartao:#21302A; --texto:#ECF1ED; --sub:#A9B7AF; --borda:#0B120E; --verde-claro:#1E3A2A; --vermelho-claro:#3E2220; color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--fundo);color:var(--texto);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.45}
+main{max-width:28rem;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:1.45rem;margin:0}
+p.sub{color:var(--sub);margin:4px 0 18px}
+.cartao{background:var(--cartao);border:2px solid var(--borda);border-radius:16px;padding:16px;margin-top:14px}
+label{display:block;font-weight:700;margin-bottom:6px}
+input{width:100%;font:inherit;font-size:1.25rem;padding:12px 14px;border:2px solid var(--borda);border-radius:12px;background:var(--fundo);color:var(--texto)}
+#codigo{text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+input:focus-visible,button:focus-visible{outline:3px solid var(--amarelo);outline-offset:2px}
+.linha{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+button{font:inherit;font-weight:800;font-size:1.05rem;padding:13px 12px;border-radius:12px;border:2px solid var(--borda);cursor:pointer;background:var(--cartao);color:var(--texto)}
+button.prim{background:var(--verde);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.res{margin-top:14px;border-radius:14px;padding:14px;border:2px solid var(--borda)}
+.res.ok{background:var(--verde-claro)}
+.res.ruim{background:var(--vermelho-claro)}
+.res .valor{font-size:2.2rem;font-weight:900;margin:2px 0}
+.res dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:8px 0 0}
+.res dt{color:var(--sub)}
+.res dd{margin:0;font-weight:700}
+.status{font-weight:900;font-size:1.1rem}
+.pequeno{font-size:.85rem;color:var(--sub);margin-top:10px}
+a{color:inherit}
+</style>
+</head>
+<body>
+<main>
+  <h1>Balcão · Validar cupom</h1>
+  <p class="sub">Adega do Edu Tycoon. Página de uso exclusivo da Adega.</p>
+
+  <section class="cartao" id="boxSenha">
+    <label for="senha">Senha do balcão</label>
+    <input id="senha" type="password" autocomplete="current-password" placeholder="A senha que você definiu no Supabase">
+    <p class="pequeno">A senha fica guardada só nesta aba e some ao fechar o navegador.</p>
+  </section>
+
+  <section class="cartao">
+    <label for="codigo">Código do cupom</label>
+    <input id="codigo" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="EDU-XXXX-XXXX" maxlength="13">
+    <div class="linha">
+      <button id="btnConsultar" type="button">Consultar</button>
+      <button id="btnUsar" type="button" class="prim" disabled>Dar baixa</button>
+    </div>
+    <div id="resultado" role="status" aria-live="polite"></div>
+  </section>
+</main>
+<script>
+(function(){
+'use strict';
+const SUPABASE_URL='https://pigxqmdmhnagghdzwvmu.supabase.co';
+const SUPABASE_CHAVE='sb_publishable_kUvkWcIttr3dcKMyab3dOA_2jW0taoi';
+const $=s=>document.querySelector(s);
+async function rpc(nome,corpo){
+  const h={'Content-Type':'application/json','apikey':SUPABASE_CHAVE};
+  if(!SUPABASE_CHAVE.startsWith('sb_')) h.Authorization='Bearer '+SUPABASE_CHAVE;
+  const r=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/rest/v1/rpc/'+nome,{method:'POST',headers:h,body:JSON.stringify(corpo)});
+  const t=await r.text(); let d=null; try{d=t?JSON.parse(t):null;}catch(e){}
+  if(!r.ok) throw new Error((d&&d.message)||('erro '+r.status));
+  return d;
+}
+const reais=c=>'R$ '+(c/100).toFixed(2).replace('.',',');
+const dataHora=d=>new Date(d).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const MSG={senha_invalida:'Senha incorreta.',cupom_inexistente:'Cupom não encontrado. Confira o código.',cupom_ja_usado:'Este cupom já foi usado.',cupom_expirado:'Este cupom está vencido.'};
+try{ $('#senha').value=sessionStorage.getItem('senhaBalcao')||''; }catch(e){}
+$('#senha').addEventListener('change',()=>{ try{ sessionStorage.setItem('senhaBalcao',$('#senha').value); }catch(e){} });
+$('#codigo').addEventListener('input',()=>{ $('#btnUsar').disabled=true; $('#resultado').innerHTML=''; });
+function codigo(){ let c=$('#codigo').value.toUpperCase().replace(/[^A-Z0-9]/g,''); if(c.startsWith('EDU')) c=c.slice(3); return c.length===8?'EDU-'+c.slice(0,4)+'-'+c.slice(4):null; }
+function mostrar(cls,html){ const r=document.createElement('div'); r.className='res '+cls; r.innerHTML=html; $('#resultado').innerHTML=''; $('#resultado').appendChild(r); return r; }
+function erro(e){ const k=Object.keys(MSG).find(x=>e.message.indexOf(x)>=0); mostrar('ruim','<div class="status"></div>').querySelector('.status').textContent=k?MSG[k]:'Não foi possível consultar agora. Confira a internet.'; }
+let atual=null;
+$('#btnConsultar').addEventListener('click',async()=>{
+  const c=codigo(), senha=$('#senha').value; $('#btnUsar').disabled=true; atual=null;
+  if(!senha){ mostrar('ruim','<div class="status">Digite a senha do balcão.</div>'); return; }
+  if(!c){ mostrar('ruim','<div class="status">Código incompleto. O formato é EDU-XXXX-XXXX.</div>'); return; }
+  $('#codigo').value=c; $('#btnConsultar').disabled=true;
+  try{
+    const rows=await rpc('consultar_cupom',{p_codigo:c,p_senha:senha})||[];
+    if(!rows.length){ erro(new Error('cupom_inexistente')); return; }
+    const x=rows[0], usado=!!x.usado_em, venc=!usado&&new Date(x.expira_em)<new Date();
+    const r=mostrar(usado||venc?'ruim':'ok','<div class="status"></div><div class="valor"></div><dl><dt>Jogador</dt><dd class="ap"></dd><dt>Gerado em</dt><dd class="cr"></dd><dt>Validade</dt><dd class="ex"></dd></dl>');
+    r.querySelector('.status').textContent=usado?'✖ Já usado em '+dataHora(x.usado_em):venc?'✖ Vencido':'✔ Cupom válido';
+    r.querySelector('.valor').textContent=reais(x.valor_centavos)+' de desconto';
+    r.querySelector('.ap').textContent=x.apelido; r.querySelector('.cr').textContent=dataHora(x.criado_em); r.querySelector('.ex').textContent=dataHora(x.expira_em);
+    if(!usado&&!venc){ atual=x; $('#btnUsar').disabled=false; }
+    try{ sessionStorage.setItem('senhaBalcao',senha); }catch(e){}
+  }catch(e){ erro(e); }
+  finally{ $('#btnConsultar').disabled=false; }
+});
+$('#btnUsar').addEventListener('click',async()=>{
+  if(!atual) return;
+  if(!confirm(`Dar baixa no cupom ${atual.codigo} de ${reais(atual.valor_centavos)} (${atual.apelido})? Depois disso ele não pode ser usado de novo.`)) return;
+  $('#btnUsar').disabled=true;
+  try{
+    const rows=await rpc('usar_cupom',{p_codigo:atual.codigo,p_senha:$('#senha').value})||[]; const x=rows[0];
+    const r=mostrar('ok','<div class="status"></div><div class="valor"></div><p></p>');
+    r.querySelector('.status').textContent='✔ Baixa feita';
+    r.querySelector('.valor').textContent='Desconte '+reais(x.valor_centavos);
+    r.querySelector('p').textContent=`Cupom ${x.codigo} de ${x.apelido} usado em ${dataHora(x.usado_em)}. Aplique o desconto em produtos não alcoólicos.`;
+    atual=null; $('#codigo').value='';
+  }catch(e){ erro(e); }
+});
+})();
+</script>
+</body>
+</html>
