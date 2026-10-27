@@ -119,6 +119,34 @@ body:not(.jogando) .cobrar{display:none !important}
 .valor{display:inline-flex;align-items:center;gap:8px;font-family:'Lilita One','Arial Black',sans-serif;font-size:2.2rem;color:var(--amarelo);-webkit-text-stroke:6px var(--contorno);paint-order:stroke fill;margin:8px 0}
 .valor svg{width:40px;height:40px}
 .cupom{margin-top:12px;border:3px dashed var(--contorno);border-radius:14px;padding:10px 12px;background:var(--painel2);font-weight:700;font-size:.9rem;line-height:1.4;text-align:left}
+.campo{display:grid;gap:6px;margin-top:14px;font-weight:900}
+.campo input{font:inherit;font-weight:800;font-size:1.1rem;padding:12px 14px;border:3px solid var(--contorno);border-radius:14px;background:var(--painel2);color:var(--texto);user-select:text;-webkit-user-select:text;touch-action:manipulation;width:100%}
+.campo input:focus-visible{outline:3px solid var(--amarelo);outline-offset:2px}
+.aceite{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:700;line-height:1.35;font-size:.92rem}
+.aceite input{width:24px;height:24px;flex:none;accent-color:#3CB371;margin:0}
+.aceite a{color:var(--azul-esc)}
+:root:not([data-theme="light"]) .aceite a{color:#8CC8FF}
+.erro{color:var(--vermelho);font-weight:800;min-height:1.2em;margin:10px 0 0}
+.tela{touch-action:pan-y}
+#btnRanking{font-size:1.15rem;padding:4px 10px;cursor:pointer}
+.abas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.aba{border:3px solid var(--contorno);border-radius:12px;background:var(--painel2);padding:8px;font-weight:900}
+.aba.ativa{background:var(--amarelo);color:#2A1A12}
+.lista-rk{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px;max-height:52vh;overflow-y:auto}
+.lista-rk li{display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;background:var(--painel2);border:2.5px solid var(--contorno);border-radius:12px;padding:7px 10px}
+.lista-rk li.eu{background:#C9F7D8;color:#2A1A12}
+.lista-rk .pos{font-family:'Lilita One','Arial Black',sans-serif;font-size:1.15rem;text-align:center}
+.lista-rk .nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lista-rk .val{display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.lista-rk .val svg{width:20px;height:20px}
+.lista-rk li.sep{background:none;border:none;justify-content:center;display:block;text-align:center;color:var(--sub);padding:0}
+.alerta{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);translate:-50% 0;z-index:6;display:flex;align-items:center;gap:10px;background:#FFE3DF;color:#2A1A12;border:3px solid #2A1A12;border-radius:16px;box-shadow:0 4px 0 #2A1A12;padding:8px 8px 8px 12px;max-width:min(94vw,28rem);font-weight:900}
+.alerta[hidden]{display:none}
+.alerta span{flex:1;line-height:1.25}
+.alerta button{border:3px solid #2A1A12;border-radius:12px;background:linear-gradient(#5FD38D,#3CB371 55%,#24804F);color:#fff;font-family:'Lilita One','Arial Black',sans-serif;-webkit-text-stroke:3px #2A1A12;paint-order:stroke fill;padding:7px 10px;font-size:1rem;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.alerta button svg{width:18px;height:18px}
+.alerta button:disabled{filter:grayscale(1);opacity:.7}
+body:not(.jogando) .alerta{display:none}
 @media (prefers-reduced-motion: reduce){ .selo .seta,.tarefa button,.selo.fechado.pode,.pop{animation-duration:.01s;animation-iteration-count:1} .painel{transition:none} }
 </style>
 </head>
@@ -127,6 +155,7 @@ body:not(.jogando) .cobrar{display:none !important}
 
 <header class="hud">
   <div class="linha-hud">
+    <button class="pilula" id="btnRanking" aria-label="Ver ranking">🏆</button>
     <div class="pilula" id="dinheiro"><span id="icDin"></span><span id="valDin">0</span></div>
     <div class="pilula" id="taxa">0/min</div>
   </div>
@@ -137,7 +166,30 @@ body:not(.jogando) .cobrar{display:none !important}
 <div id="cobrancas"></div>
 <div id="efeitos"></div>
 
+<div class="alerta" id="alertaEstoque" hidden role="status"><span id="alertaTxt"></span><button type="button" id="alertaBtn"></button></div>
 <div class="painel" id="painel" aria-live="polite"><div class="caixa" id="painelCaixa"></div></div>
+
+<section class="tela" id="telaCadastro" hidden>
+  <div class="caixa">
+    <h1 class="titulo grande centro">Adega do Edu</h1>
+    <p class="txt centro">Crie seu perfil de jogador para entrar no ranking de quem mais fatura na adega.</p>
+    <label class="campo"><span>Nome ou apelido</span><input id="cadNome" maxlength="20" autocomplete="nickname" placeholder="Como você quer aparecer no ranking"></label>
+    <label class="campo"><span>Idade</span><input id="cadIdade" type="number" inputmode="numeric" min="1" max="120" placeholder="Sua idade"></label>
+    <label class="aceite"><input type="checkbox" id="cadAceite"><span>Li e aceito a <a href="privacidade.html" target="_blank" rel="noopener">política de privacidade</a>. Meu nome ou apelido e meu faturamento no jogo vão aparecer no ranking; a idade não aparece.</span></label>
+    <p class="erro" id="cadErro" role="alert"></p>
+    <button class="btn" id="btnCadastrar">Começar</button>
+  </div>
+</section>
+
+<section class="tela" id="telaRanking" hidden>
+  <div class="caixa">
+    <div class="cabeca"><h2 class="titulo" style="font-size:2rem">Ranking</h2><span class="pilula" id="rkEu"></span></div>
+    <div class="abas" role="tablist"><button class="aba ativa" type="button" data-aba="mes" role="tab">Este mês</button><button class="aba" type="button" data-aba="geral" role="tab">Geral</button></div>
+    <ol class="lista-rk" id="listaRanking"></ol>
+    <p class="txt" id="rkInfo" style="color:var(--sub);font-size:.9rem"></p>
+    <button class="btn amarelo" id="btnFecharRanking">Voltar ao jogo</button>
+  </div>
+</section>
 
 <section class="tela" id="telaInicio">
   <div class="caixa centro">
@@ -278,7 +330,7 @@ renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x7FC4B8);
 const cam=new THREE.OrthographicCamera(-5,5,5,-5,0.1,120);
 const OFF=new THREE.Vector3(14,16,14);
-const alvoCam=new THREE.Vector3(0,0,0.6);
+const alvoCam=new THREE.Vector3(-0.6,0,-0.5);
 let meiaLarg=4.7;
 
 scene.add(new THREE.HemisphereLight(0xFFF6E8,0x7A6A5A,0.6));
@@ -637,10 +689,10 @@ function pontoEst(id,slot){
   const d=EST[id], f=new THREE.Vector3(d.face[0],0,d.face[2]), lat=new THREE.Vector3(-f.z,0,f.x);
   return new THREE.Vector3(d.pos[0],0,d.pos[2]).addScaledVector(f,1.25).addScaledVector(lat,(slot-1)*0.62);
 }
+const MAX_FILA=6;
 function pontoFila(i){
   if(i<4) return new THREE.Vector3(CX.x,0,CX.z+1.85+i*0.62);
-  if(i<7) return new THREE.Vector3(CX.x+(i-3)*0.62,0,CX.z+1.85+3*0.62);
-  return new THREE.Vector3(CX.x+3*0.62,0,CX.z+1.85+(9-i)*0.62);
+  return new THREE.Vector3(CX.x+(i-3)*0.62,0,CX.z+1.85+3*0.62);
 }
 function pontoPagar(k){ return new THREE.Vector3(CX.x+[-0.7,0.7][k],0,CX.z+1.0); }
 const automatico=k=>k<S.operadores;
@@ -660,6 +712,9 @@ function proximoAlvo(c){
     const id=c.lista[0], v=vagasEst[id], s=v.indexOf(null);
     if(s>=0){ v[s]=c; c.est=id; c.slot=s; c.estado='indoEst'; irPara(c,pontoEst(id,s)); }
     else { c.estado='esperandoVaga'; c.t=0.5; const d=EST[id]; irPara(c,pontoEst(id,1).add(new THREE.Vector3(d.face[0],0,d.face[2]).multiplyScalar(1.0)).add(new THREE.Vector3(rnd(-0.5,0.5),0,rnd(-0.3,0.3)))); }
+  } else if(fila.length>=MAX_FILA){
+    pop(c.g.position.clone().setY(2.1),'Fila cheia 😤','ruim'); c.g.userData.sacola.visible=false;
+    c.estado='saindo'; c.caminho=rota(c.g.position,PORTA).concat([FORA_PORTA.clone(),SAIDA.clone()]);
   } else { c.estado='fila'; fila.push(c); reordenarFila(); }
 }
 function reordenarFila(){ fila.forEach((c,i)=>{ if(c.posFila!==i){ c.posFila=i; irPara(c,pontoFila(i)); } }); }
@@ -864,6 +919,96 @@ function atualizarFornecedor(dt){
   else if(E.estado==='largando'){ E.t-=dt; entregador.userData.corpo.rotation.x=Math.sin(E.t*8)*0.15; if(E.t<=0){ entregador.userData.corpo.rotation.x=0; proximoSetor(); } }
   else if(E.estado==='voltando'){ if(mover(E,dt)){ if(F.fila.length) iniciarViagem(); else { entregador.visible=false; E.estado=''; F.estado='saindo'; } } }
 }
+
+// ================= Ranking online (Supabase) =================
+const SUPABASE_URL='https://pigxqmdmhnagghdzwvmu.supabase.co';
+const SUPABASE_CHAVE='sb_publishable_kUvkWcIttr3dcKMyab3dOA_2jW0taoi';
+const rankingAtivo=()=>/^https:\/\//.test(SUPABASE_URL)&&SUPABASE_CHAVE.length>20;
+async function rpc(nome,corpo){
+  const h={'Content-Type':'application/json','apikey':SUPABASE_CHAVE};
+  if(!SUPABASE_CHAVE.startsWith('sb_')) h.Authorization='Bearer '+SUPABASE_CHAVE;
+  const r=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/rest/v1/rpc/'+nome,{method:'POST',headers:h,body:JSON.stringify(corpo)});
+  const txt=await r.text(); let dados=null; try{dados=txt?JSON.parse(txt):null;}catch(e){}
+  if(!r.ok) throw new Error((dados&&dados.message)||('erro '+r.status));
+  return dados;
+}
+function mesAtual(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function checarMes(){ const m=mesAtual(); if(S.mes!==m){ S.mes=m; S.totalInicioMes=S.total; } }
+const fatMes=()=>Math.max(0,S.total-(S.totalInicioMes||0));
+let registrando=false;
+async function garantirRegistro(){
+  if(!rankingAtivo()||!S.perfil||S.perfil.id||registrando) return;
+  registrando=true;
+  try{ const r=await rpc('registrar_jogador',{p_apelido:S.perfil.apelido,p_idade:S.perfil.idade}); const l=Array.isArray(r)?r[0]:r; if(l&&l.jogador_id){ S.perfil.id=l.jogador_id; S.perfil.token=l.chave; salvar(); } }catch(e){}
+  registrando=false;
+}
+let ultimoEnvio='';
+async function sincronizar(){
+  if(!rankingAtivo()||!S.perfil) return;
+  checarMes();
+  if(!S.perfil.id){ await garantirRegistro(); if(!S.perfil.id) return; }
+  const k=Math.floor(S.total)+'|'+S.mes; if(k===ultimoEnvio) return;
+  try{ await rpc('enviar_faturamento',{p_id:S.perfil.id,p_token:S.perfil.token,p_total:Math.floor(S.total),p_mes:S.mes,p_valor_mes:Math.floor(fatMes())}); ultimoEnvio=k; }
+  catch(e){ if(/jogador_invalido/.test(e.message)){ S.perfil.id=null; S.perfil.token=null; salvar(); } }
+}
+setInterval(sincronizar,45000);
+let abaRk='mes';
+function linhaRk(pos,nome,valor,eu){
+  const li=document.createElement('li'); if(eu) li.className='eu';
+  const p=document.createElement('span'); p.className='pos'; p.textContent=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':pos+'º';
+  const n=document.createElement('span'); n.className='nome'; n.textContent=nome+(eu?' (você)':'');
+  const v=document.createElement('span'); v.className='val'; v.innerHTML=NOTA; v.appendChild(document.createTextNode(' '+fmt(valor)));
+  li.append(p,n,v); return li;
+}
+async function abrirRanking(aba){
+  abaRk=aba||abaRk; checarMes();
+  document.querySelectorAll('.aba').forEach(b=>{const at=b.dataset.aba===abaRk;b.classList.toggle('ativa',at);b.setAttribute('aria-selected',at?'true':'false');});
+  const meu=abaRk==='mes'?fatMes():S.total;
+  $('#rkEu').innerHTML='Você '+NOTA+' '+fmt(meu);
+  const lista=$('#listaRanking'), info=$('#rkInfo'); lista.innerHTML=''; info.textContent='';
+  $('#telaRanking').hidden=false;
+  if(!rankingAtivo()){ lista.appendChild(linhaRk(1,S.perfil?S.perfil.apelido:'Você',meu,true)); info.textContent='O ranking online ainda não foi ligado pela Adega do Edu. Por enquanto, aparece só o seu faturamento.'; return; }
+  info.textContent='Carregando…';
+  try{
+    await sincronizar();
+    const rows=await rpc('ver_ranking',{p_mes:abaRk==='mes'?mesAtual():null,p_id:S.perfil&&S.perfil.id?S.perfil.id:null})||[];
+    info.textContent=rows.length?(abaRk==='mes'?'O ranking do mês recomeça no dia 1º.':'Faturamento total desde o início do jogo.'):'Ninguém pontuou ainda. Seja o primeiro!';
+    let ant=0;
+    rows.forEach(r=>{ if(r.posicao>ant+1&&ant>=50){ const sep=document.createElement('li'); sep.className='sep'; sep.textContent='⋯'; lista.appendChild(sep); } lista.appendChild(linhaRk(r.posicao,r.apelido,r.valor,r.eu)); ant=r.posicao; });
+  }catch(e){ info.textContent='Não foi possível carregar o ranking agora. Confira a internet e tente de novo.'; }
+}
+$('#btnRanking').addEventListener('click',()=>{SOM.abrir();abrirRanking();});
+document.querySelectorAll('.aba').forEach(b=>b.addEventListener('click',()=>{SOM.clique&&SOM.clique();abrirRanking(b.dataset.aba);}));
+$('#btnFecharRanking').addEventListener('click',()=>{$('#telaRanking').hidden=true;});
+
+// Cadastro
+function mostrarCadastro(){ $('#telaInicio').hidden=true; $('#telaCadastro').hidden=false; document.body.classList.remove('jogando'); }
+$('#btnCadastrar').addEventListener('click',()=>{
+  const nome=$('#cadNome').value.replace(/\s+/g,' ').trim(), idade=parseInt($('#cadIdade').value,10), err=$('#cadErro');
+  if(nome.length<2){ err.textContent='Digite um nome ou apelido com pelo menos 2 letras.'; $('#cadNome').focus(); return; }
+  if(!idade||idade<1||idade>120){ err.textContent='Digite a sua idade.'; $('#cadIdade').focus(); return; }
+  if(idade<18){ err.textContent='Desculpe, o jogo da Adega do Edu é exclusivo para maiores de 18 anos.'; return; }
+  if(!$('#cadAceite').checked){ err.textContent='Para continuar, aceite a política de privacidade.'; return; }
+  err.textContent='';
+  S.perfil={apelido:nome,idade,id:null,token:null}; checarMes(); salvar();
+  $('#telaCadastro').hidden=true; SOM.marco();
+  if(S.viuInicio){ document.body.classList.add('jogando'); atualizarHUD(); } else $('#telaInicio').hidden=false;
+  garantirRegistro();
+});
+
+// Alerta de estoque acabando (quando ainda não há reposição automática)
+function atualizarAlerta(){
+  const el=$('#alertaEstoque');
+  if(autoRepor()||painelAtual){ el.hidden=true; return; }
+  let pior=null,r=1;
+  IDS.forEach(id=>{ const e=S.est[id]; if(!e.aberta||e.pedido>0) return; const q=e.estoque/cap(id); if(q<=0.25&&q<r+1e-9){ if(!pior||q<r){pior=id;r=q;} } });
+  if(!pior){ el.hidden=true; return; }
+  const e=S.est[pior], c=custoPedido(pior);
+  $('#alertaTxt').textContent=`${EST[pior].ic} ${EST[pior].nome}: ${e.estoque?'estoque acabando ('+e.estoque+'/'+cap(pior)+')':'acabou o estoque!'}`;
+  const b=$('#alertaBtn'); const html='🚚 Pedir '+NOTA+' '+fmt(c); if(b._h!==html){b._h=html;b.innerHTML=html;}
+  b.disabled=S.din<c; b.dataset.id=pior; el.hidden=false;
+}
+$('#alertaBtn').addEventListener('click',e=>{ e.stopPropagation(); const id=$('#alertaBtn').dataset.id; if(id&&pedir(id)) atualizarAlerta(); });
 
 // ================= Ganhos =================
 const ganhos=[];
@@ -1107,7 +1252,7 @@ function verificarOffline(){
 }
 $('#btnOffline').onclick=()=>{ S.din+=ganhoOff; ganhoOff=0; $('#telaOffline').hidden=true; document.body.classList.add('jogando'); SOM.coletar(); atualizarHUD(true); salvar(); };
 $('#btnFicar').onclick=()=>{$('#telaPrestigio').hidden=true;};
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) salvar(); else if(document.body.classList.contains('jogando')&&verificarOffline()) document.body.classList.remove('jogando'); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ salvar(); sincronizar(); } else if(document.body.classList.contains('jogando')&&verificarOffline()) document.body.classList.remove('jogando'); });
 setInterval(salvar,5000);
 
 // ================= Laço =================
@@ -1124,7 +1269,7 @@ function laco(){
     if(S.gerente){ tGerente+=dt; if(tGerente>2.5){ tGerente=0; if(pilhaValor>=1) coletar('gerente'); } gerente.rotation.y=Math.sin(performance.now()/900)*0.4; }
     if(S.mesas.garcom){ assentos.forEach(a=>{ if(a.estado==='sujo'){ a.t+=dt; if(a.t>2.5) recolherMesa(a.mesa,true); } }); }
     assentos.forEach(a=>{ if(a.estado==='sujo') a.nota.position.y=0.03+Math.abs(Math.sin(performance.now()/250))*0.04; });
-    tSelos+=dt; if(tSelos>0.5){ tSelos=0; if(autoRepor()) IDS.forEach(id=>{ const e=S.est[id]; if(e.aberta&&e.estoque+e.pedido<=cap(id)*0.35) pedir(id,true); }); renderSelos(); renderTarefa(); if(painelAtual) { const bm=$('#bMaxTxt'); if(bm&&IDS.includes(painelAtual)){ const n=quantosCompra(painelAtual); bm.textContent=n?`+${n} níveis`:'sem dinheiro'; $('#bMax').disabled=!n; } const ba=$('#bAcao'); if(ba){ /* atualiza estado dos botões */ renderPainelLeve(); } } }
+    tSelos+=dt; if(tSelos>0.5){ tSelos=0; atualizarAlerta(); if(autoRepor()) IDS.forEach(id=>{ const e=S.est[id]; if(e.aberta&&e.estoque+e.pedido<=cap(id)*0.35) pedir(id,true); }); renderSelos(); renderTarefa(); if(painelAtual) { const bm=$('#bMaxTxt'); if(bm&&IDS.includes(painelAtual)){ const n=quantosCompra(painelAtual); bm.textContent=n?`+${n} níveis`:'sem dinheiro'; $('#bMax').disabled=!n; } const ba=$('#bAcao'); if(ba){ /* atualiza estado dos botões */ renderPainelLeve(); } } }
   }
   // pilha de notas
   const n=pilhaValor<1?0:Math.min(16,1+Math.floor(Math.log2(pilhaValor+1)*1.6));
@@ -1153,7 +1298,9 @@ function renderPainelLeve(){
 }
 if(document.fonts&&document.fonts.load){ document.fonts.load('150px "Lilita One"').then(desenharPlaca).catch(()=>{}); }
 atualizarEstacoes(); atualizarMesas(); atualizarEquipe(); IDS.forEach(atualizarProdutos); atualizarHUD();
-if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); }
+if(S.mes===undefined){ S.mes=mesAtual(); S.totalInicioMes=S.total; }
+if(!S.perfil){ mostrarCadastro(); }
+else if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); sincronizar(); }
 laco();
 })();
 </script>
