@@ -314,9 +314,9 @@ const EST={
 };
 const IDS=['refri','agua','salgadinho','gelo','mercearia'];
 const MARCOS=[10,25,50,100];
-const CUSTO_CAIXA=[0,250], MAX_CAIXAS=2;
+const CUSTO_CAIXA=[0,5000], MAX_CAIXAS=2;
 const CUSTO_GERENTE=10000;
-const CUSTO_OPERADOR=[150,1500,9000];
+const CUSTO_OPERADOR=[1500,15000,90000];
 const CUSTO_MESA=[2500,6000,15000,40000,80000,150000], CUSTO_GARCOM=12000, TEMPO_MESA=7, CHANCE_MESA=0.55;
 function valorMesa(n){n=n||S.mesas.nivel;return 30*n*Math.pow(2,marcosAte(n))*multPrest();}
 function custoMesaNivel(){return Math.ceil(1200*Math.pow(1.2,S.mesas.nivel-1));}
@@ -345,7 +345,7 @@ function marcosAte(n){return MARCOS.filter(m=>n>=m).length;}
 function valorEst(id,n){n=n||S.est[id].nivel;return EST[id].valor*n*Math.pow(2,marcosAte(n))*multPrest();}
 function tempoEst(id,n){n=n||S.est[id].nivel;return EST[id].tempo/(1+0.35*marcosAte(n));}
 function custoEst(id){const n=S.est[id].nivel;return Math.ceil(EST[id].custo*Math.pow(1.2,n-1));}
-function custoCaixaV(){return Math.ceil(30*Math.pow(1.75,S.caixaV-1));}
+function custoCaixaV(){return Math.ceil(2500*Math.pow(1.6,S.caixaV-1));}
 function tempoPagar(v){return 2.4*Math.pow(0.86,(v||S.caixaV)-1);}
 function custoLetreiro(){return Math.ceil(20*Math.pow(1.62,S.letreiro-1));}
 function intervalo(l){return 4.5*Math.pow(0.85,(l||S.letreiro)-1);}
