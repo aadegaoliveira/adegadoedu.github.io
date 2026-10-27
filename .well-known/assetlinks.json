@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.adegadoedu.twa",
+        "sha256_cert_fingerprints": ["C6:C7:AD:FD:1E:C0:8B:F6:3E:9B:CE:10:DE:1E:FC:41:48:34:E9:0B:0D:D8:66:D7:A8:2B:F4:82:95:48:36:A6"]
+      }
+    }]
