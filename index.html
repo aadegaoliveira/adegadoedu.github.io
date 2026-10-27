@@ -212,6 +212,17 @@ body:not(.jogando) .alerta{display:none}
   </div>
 </section>
 
+<section class="tela" id="telaFalencia" hidden>
+  <div class="caixa centro">
+    <div style="font-size:3.4rem;line-height:1" aria-hidden="true">📉</div>
+    <h2 class="titulo" style="font-size:2.3rem;margin-top:6px">A Adega faliu!</h2>
+    <p class="txt">Os produtos acabaram e não sobrou dinheiro para fazer um novo pedido ao fornecedor. Sem estoque, não tem venda.</p>
+    <div class="cupom"><b>Dica para a próxima:</b> peça reposição antes do estoque zerar e guarde dinheiro para o fornecedor antes de gastar tudo em melhorias. Um operador de caixa faz os pedidos sozinho.</div>
+    <p class="txt" id="falRecorde" style="color:var(--sub)"></p>
+    <button class="btn" id="btnRecomecar">Recomeçar a adega</button>
+  </div>
+</section>
+
 <section class="tela" id="telaPrestigio" hidden>
   <div class="caixa centro">
     <h2 class="titulo" style="font-size:2rem">Adega completa!</h2>
@@ -885,9 +896,11 @@ const caixaEntrega=new THREE.Group(); caixaEntrega.position.set(0,0.98,0.3); ent
 const PARADA_X=2.6, Z_RUA=9.6, DESCARGA=new THREE.Vector3(1.4,0,8.3), CALCADA_PT=new THREE.Vector3(1.4,0,7.0);
 const FORN={estado:'ocioso',fila:[],ent:{g:entregador,caminho:[],lista:[],estado:'',t:0,passo:0,vel:2.6}};
 IDS.forEach(id=>{ if(S.est[id].pedido>0) FORN.fila.push(id); });
+function qtdPossivel(id){return Math.min(faltando(id),Math.floor(S.din/custoUnit(id)));}
 function pedir(id,auto){
-  const q=faltando(id), c=q*custoUnit(id);
-  if(q<=0||S.din<c) return false;
+  const q=qtdPossivel(id), c=q*custoUnit(id);
+  if(q<=0) return false;
+  if(auto&&q<Math.min(5,faltando(id))) return false;
   S.din-=c; S.est[id].pedido+=q; S.pedidos=(S.pedidos||0)+1;
   if(FORN.fila.indexOf(id)<0&&FORN.ent.lista.indexOf(id)<0) FORN.fila.push(id);
   pop(objEst[id].g.position.clone().setY(2.7),(auto?'Pedido automático 🚚':'Pedido feito 🚚'),'');
@@ -1032,12 +1045,43 @@ function atualizarAlerta(){
   let pior=null,r=1;
   IDS.forEach(id=>{ const e=S.est[id]; if(!e.aberta||e.pedido>0) return; const q=e.estoque/cap(id); if(q<=0.25&&q<r+1e-9){ if(!pior||q<r){pior=id;r=q;} } });
   if(!pior){ el.hidden=true; return; }
-  const e=S.est[pior], c=custoPedido(pior);
+  const e=S.est[pior], qp=qtdPossivel(pior), c=qp>0?qp*custoUnit(pior):custoPedido(pior);
   $('#alertaTxt').textContent=`${EST[pior].ic} ${EST[pior].nome}: ${e.estoque?'estoque acabando ('+e.estoque+'/'+cap(pior)+')':'acabou o estoque!'}`;
   const b=$('#alertaBtn'); const html='🚚 Pedir '+NOTA+' '+fmt(c); if(b._h!==html){b._h=html;b.innerHTML=html;}
-  b.disabled=S.din<c; b.dataset.id=pior; el.hidden=false;
+  b.disabled=qp<=0; b.dataset.id=pior; el.hidden=false;
 }
 $('#alertaBtn').addEventListener('click',e=>{ e.stopPropagation(); const id=$('#alertaBtn').dataset.id; if(id&&pedir(id)) atualizarAlerta(); });
+
+// ================= Falência =================
+function semSaida(){
+  const abertas=IDS.filter(i=>S.est[i].aberta);
+  if(abertas.some(i=>S.est[i].estoque>0||S.est[i].pedido>0)) return false;
+  if(FORN.estado!=='ocioso'||pilhaValor>=1) return false;
+  if(assentos.some(a=>a.estado!=='livre')) return false;
+  if(clientes.some(c=>c.valor>0&&c.estado!=='saindo')) return false;
+  if(S.tarefa<TAREFAS.length){ const m=TAREFAS[S.tarefa].meta(); if(m[0]>=m[1]) return false; }
+  return S.din<Math.min(...abertas.map(custoUnit));
+}
+let tFalencia=0;
+function checarFalencia(dt){
+  if(!semSaida()){ tFalencia=0; return; }
+  tFalencia+=dt; if(tFalencia<3) return;
+  tFalencia=0; document.body.classList.remove('jogando'); fecharPainel();
+  $('#falRecorde').textContent=S.perfil&&rankingAtivo()?`O seu melhor faturamento (${fmt(S.total)}) continua guardado no ranking.`:'';
+  sincronizar(); SOM.erro(); $('#telaFalencia').hidden=false;
+}
+function recomecar(){
+  const perfil=S.perfil, fal=(S.falencias||0)+1;
+  clientes.forEach(c=>scene.remove(c.g)); clientes.length=0; fila=[]; IDS.forEach(id=>vagasEst[id]=[null,null,null]); pagando.fill(null); pilhaValor=0;
+  baloesCobrar.forEach(b=>b.style.display='none');
+  assentos.forEach(a=>{a.estado='livre';a.valor=0;a.cliente=null;a.t=0;a.copo.visible=false;a.nota.visible=false;});
+  FORN.estado='ocioso'; FORN.fila.length=0; FORN.ent.lista=[]; FORN.ent.estado=''; entregador.visible=false; caminhao.visible=false;
+  S=estadoNovo(); S.viuInicio=true; S.perfil=perfil; S.falencias=fal; S.pedidos=0; S.mes=mesAtual(); S.totalInicioMes=0;
+  IDS.forEach(id=>{const e=S.est[id]; e.estoque=cap(id); e.pedido=0;});
+  salvar(); atualizarEstacoes(); atualizarMesas(); atualizarEquipe(); IDS.forEach(atualizarProdutos);
+  cacheTarefa=''; $('#telaFalencia').hidden=true; document.body.classList.add('jogando'); SOM.marco(); atualizarHUD(true);
+}
+$('#btnRecomecar').addEventListener('click',recomecar);
 
 // ================= Ganhos =================
 const ganhos=[];
@@ -1154,7 +1198,7 @@ function renderPainel(){
         <div class="stat"><span>Tempo para pegar</span><b>${tempoEst(k).toFixed(1).replace('.',',')} s</b></div>
         <div class="stat"><span>Estoque</span><b>${e.estoque} / ${cap(k)}${e.pedido>0?` <span class="prox">🚚 +${e.pedido} a caminho</span>`:''}</b></div>
         <div class="stat"><span>Custo por unidade</span><b>${fmt(custoUnit(k))}</b></div>
-      </div>`+(faltando(k)>0?btnCusto(custoPedido(k),`🚚 Pedir +${faltando(k)} un.`,'bPedir'):`<button class="btn azul" disabled>${e.pedido>0?'Pedido a caminho':'Estoque completo'}</button>`)+
+      </div>`+(faltando(k)>0?(qtdPossivel(k)>0&&qtdPossivel(k)<faltando(k)?btnCusto(qtdPossivel(k)*custoUnit(k),`🚚 Pedir +${qtdPossivel(k)} un.`,'bPedir'):btnCusto(custoPedido(k),`🚚 Pedir +${faltando(k)} un.`,'bPedir')):`<button class="btn azul" disabled>${e.pedido>0?'Pedido a caminho':'Estoque completo'}</button>`)+
       `<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700;line-height:1.35">${autoRepor()?'Reposição automática ligada: o '+(S.gerente?'gerente':'operador')+' faz o pedido ao fornecedor quando o estoque baixa.':'Contrate um operador de caixa ou o gerente para fazerem os pedidos sozinhos.'}</p>`+(prox?`<div class="marcos"><span>Nv ${prox}: valor x2 e mais rápido</span><div class="trilho"><i style="width:${100*(e.nivel-ant)/(prox-ant)}%"></i></div></div>`:'')+
       `<div class="duas">${btnCusto(custoEst(k),'Melhorar','bAcao')}<button class="btn amarelo" id="bMax">Máximo<small id="bMaxTxt"></small></button></div>`;
     }
@@ -1298,6 +1342,7 @@ function laco(){
     if(S.gerente){ tGerente+=dt; if(tGerente>2.5){ tGerente=0; if(pilhaValor>=1) coletar('gerente'); } gerente.rotation.y=Math.sin(performance.now()/900)*0.4; }
     if(S.mesas.garcom){ assentos.forEach(a=>{ if(a.estado==='sujo'){ a.t+=dt; if(a.t>2.5) recolherMesa(a.mesa,true); } }); }
     assentos.forEach(a=>{ if(a.estado==='sujo') a.nota.position.y=0.03+Math.abs(Math.sin(performance.now()/250))*0.04; });
+    checarFalencia(dt);
     tSelos+=dt; if(tSelos>0.5){ tSelos=0; atualizarAlerta(); if(autoRepor()) IDS.forEach(id=>{ const e=S.est[id]; if(e.aberta&&e.estoque+e.pedido<=cap(id)*0.35) pedir(id,true); }); renderSelos(); renderTarefa(); if(painelAtual) { const bm=$('#bMaxTxt'); if(bm&&IDS.includes(painelAtual)){ const n=quantosCompra(painelAtual); bm.textContent=n?`+${n} níveis`:'sem dinheiro'; $('#bMax').disabled=!n; } const ba=$('#bAcao'); if(ba){ /* atualiza estado dos botões */ renderPainelLeve(); } } }
   }
   // pilha de notas
@@ -1317,7 +1362,7 @@ function renderPainelLeve(){
   else if(k==='caixa'&&S.operadores>0&&S.caixaV<MAX_CAIXA_V) c=custoCaixaV();
   else if(k==='letreiro'&&S.letreiro<MAX_LETREIRO) c=custoLetreiro();
   else if(k==='mesas'&&S.mesas.n) c=custoMesaNivel();
-  const bp=$('#bPedir'); if(bp&&IDS.includes(k)) bp.disabled=S.din<custoPedido(k);
+  const bp=$('#bPedir'); if(bp&&IDS.includes(k)) bp.disabled=S.din<custoUnit(k);
   const bmn=$('#bMesaNova'); if(bmn) bmn.disabled=S.din<CUSTO_MESA[S.mesas.n]*multPrest();
   const bgc=$('#bGarcom'); if(bgc) bgc.disabled=S.din<CUSTO_GARCOM*multPrest();
   if(c!==null) b.disabled=S.din<c;
