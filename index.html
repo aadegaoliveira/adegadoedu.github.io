@@ -944,7 +944,8 @@ let registrando=false;
 async function garantirRegistro(){
   if(!rankingAtivo()||!S.perfil||S.perfil.id||registrando) return;
   registrando=true;
-  try{ const r=await rpc('registrar_jogador',{p_apelido:S.perfil.apelido,p_idade:S.perfil.idade}); const l=Array.isArray(r)?r[0]:r; if(l&&l.jogador_id){ S.perfil.id=l.jogador_id; S.perfil.token=l.chave; salvar(); } }catch(e){}
+  try{ const r=await rpc('registrar_jogador',{p_apelido:S.perfil.apelido,p_idade:S.perfil.idade}); const l=Array.isArray(r)?r[0]:r; if(l&&l.jogador_id){ S.perfil.id=l.jogador_id; S.perfil.token=l.chave; salvar(); } }
+  catch(e){ if(/apelido_em_uso/.test(e.message)){ registrando=false; pedirNovoApelido(); return; } }
   registrando=false;
 }
 let ultimoEnvio='';
@@ -988,17 +989,40 @@ $('#btnFecharRanking').addEventListener('click',()=>{$('#telaRanking').hidden=tr
 
 // Cadastro
 function mostrarCadastro(){ $('#telaInicio').hidden=true; $('#telaCadastro').hidden=false; document.body.classList.remove('jogando'); }
-$('#btnCadastrar').addEventListener('click',()=>{
+function pedirNovoApelido(){
+  if(!S.perfil) return;
+  $('#cadNome').value=S.perfil.apelido; $('#cadIdade').value=S.perfil.idade; $('#cadAceite').checked=true;
+  $('#cadErro').textContent=`O apelido “${S.perfil.apelido}” já está em uso no ranking. Escolha outro para continuar.`;
+  $('#telaInicio').hidden=true; $('#telaCadastro').hidden=false; document.body.classList.remove('jogando');
+  setTimeout(()=>{ $('#cadNome').focus(); $('#cadNome').select(); },50);
+}
+const msgCadastro={apelido_em_uso:'Esse apelido já está em uso no ranking. Escolha outro.',idade_minima:'Desculpe, o jogo da Adega do Edu é exclusivo para maiores de 18 anos.',apelido_invalido:'Use um apelido de 2 a 20 letras.'};
+$('#btnCadastrar').addEventListener('click',async()=>{
+  const btn=$('#btnCadastrar'); if(btn.disabled) return;
   const nome=$('#cadNome').value.replace(/\s+/g,' ').trim(), idade=parseInt($('#cadIdade').value,10), err=$('#cadErro');
   if(nome.length<2){ err.textContent='Digite um nome ou apelido com pelo menos 2 letras.'; $('#cadNome').focus(); return; }
   if(!idade||idade<1||idade>120){ err.textContent='Digite a sua idade.'; $('#cadIdade').focus(); return; }
-  if(idade<18){ err.textContent='Desculpe, o jogo da Adega do Edu é exclusivo para maiores de 18 anos.'; return; }
+  if(idade<18){ err.textContent=msgCadastro.idade_minima; return; }
   if(!$('#cadAceite').checked){ err.textContent='Para continuar, aceite a política de privacidade.'; return; }
+  let id=null, token=null;
+  if(rankingAtivo()){
+    btn.disabled=true; const txt=btn.textContent; btn.textContent='Verificando apelido…'; err.textContent='';
+    try{
+      const r=await rpc('registrar_jogador',{p_apelido:nome,p_idade:idade}); const l=Array.isArray(r)?r[0]:r;
+      if(l&&l.jogador_id){ id=l.jogador_id; token=l.chave; }
+    }catch(e){
+      const k=Object.keys(msgCadastro).find(c=>e.message.indexOf(c)>=0);
+      if(k){ err.textContent=msgCadastro[k]; btn.disabled=false; btn.textContent=txt; $('#cadNome').focus(); return; }
+      // sem internet: entra no jogo e tenta registrar depois
+    }
+    btn.disabled=false; btn.textContent=txt;
+  }
   err.textContent='';
-  S.perfil={apelido:nome,idade,id:null,token:null}; checarMes(); salvar();
+  const jaJogava=!!S.perfil;
+  S.perfil={apelido:nome,idade,id,token}; ultimoEnvio=''; checarMes(); salvar();
   $('#telaCadastro').hidden=true; SOM.marco();
-  if(S.viuInicio){ document.body.classList.add('jogando'); atualizarHUD(); } else $('#telaInicio').hidden=false;
-  garantirRegistro();
+  if(S.viuInicio||jaJogava){ document.body.classList.add('jogando'); atualizarHUD(); } else $('#telaInicio').hidden=false;
+  if(id) sincronizar(); else garantirRegistro();
 });
 
 // Alerta de estoque acabando (quando ainda não há reposição automática)
