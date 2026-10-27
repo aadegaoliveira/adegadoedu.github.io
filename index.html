@@ -259,7 +259,9 @@ body:not(.jogando) .alerta{display:none}
     <div style="font-size:3rem;line-height:1" aria-hidden="true">🔒</div>
     <h2 class="titulo" style="font-size:2.1rem;margin-top:6px" id="saiuTitulo">Adega fechada</h2>
     <p class="txt">A sua adega está fechada e não vende enquanto você estiver fora. Pode fechar o app tranquilo: tudo fica salvo do jeito que está.</p>
+    <p class="txt" id="saiuAviso" hidden style="color:var(--sub)">Tudo salvo! Agora é só fechar esta janela ou o app.</p>
     <button class="btn" id="btnVoltarJogar">Abrir a adega e jogar</button>
+    <button class="btn azul" id="btnFecharApp">Sair do jogo</button>
   </div>
 </section>
 
@@ -1241,7 +1243,13 @@ $('#btnSairSim').addEventListener('click',async()=>{
   S.saiu=true; salvar(); mostrarSaiu();
   try{ await sincronizar(); }catch(e){}
 });
+$('#btnFecharApp').addEventListener('click',()=>{
+  salvar();
+  try{ window.close(); }catch(e){}
+  setTimeout(()=>{ $('#saiuAviso').hidden=false; $('#btnFecharApp').style.display='none'; },300);
+});
 $('#btnVoltarJogar').addEventListener('click',()=>{
+  $('#saiuAviso').hidden=true; $('#btnFecharApp').style.display='';
   S.saiu=false; S.salvo=Date.now(); salvar();
   $('#telaSaiu').hidden=true; document.body.classList.add('jogando'); SOM.abrir(); atualizarHUD(true);
 });
