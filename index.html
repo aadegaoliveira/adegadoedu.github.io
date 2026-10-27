@@ -320,7 +320,9 @@ const CUSTO_OPERADOR=[1500,15000,90000];
 const CUSTO_MESA=[2500,6000,15000,40000,80000,150000], CUSTO_GARCOM=12000, TEMPO_MESA=7, CHANCE_MESA=0.55;
 function valorMesa(n){n=n||S.mesas.nivel;return 30*n*Math.pow(2,marcosAte(n))*multPrest();}
 function custoMesaNivel(){return Math.ceil(1200*Math.pow(1.2,S.mesas.nivel-1));}
-const MAX_LETREIRO=15, MAX_CAIXA_V=12;
+const MAX_CLIENTES_MIN=30, MAX_CAIXA_V=12;
+// o letreiro sobe até o nível em que atinge 30 clientes por minuto
+const MAX_LETREIRO=(()=>{let l=1;while(4.5*Math.pow(0.85,l-1)>60/MAX_CLIENTES_MIN+1e-9) l++;return l;})();
 
 const CHAVE='adegaEdu.tycoon.v1';
 function estadoNovo(prest){
@@ -334,6 +336,7 @@ if(!S||!S.est) S=estadoNovo();
 if(S.operadores===undefined){S.operadores=0;S.cobrados=0;}
 const MAX_OPERADORES=1;
 if(S.operadores>MAX_OPERADORES) S.operadores=MAX_OPERADORES;
+if(S.letreiro>MAX_LETREIRO) S.letreiro=MAX_LETREIRO;
 if(!S.est.mercearia){S.est.mercearia={aberta:false,nivel:1};}
 if(!S.mesas){S.mesas={n:0,nivel:1,garcom:false};}
 IDS.forEach(id=>{const e=S.est[id]; if(e.estoque===undefined){e.estoque=20+2*(e.nivel-1); e.pedido=0;}}); if(S.pedidos===undefined) S.pedidos=0;
@@ -348,7 +351,7 @@ function custoEst(id){const n=S.est[id].nivel;return Math.ceil(EST[id].custo*Mat
 function custoCaixaV(){return Math.ceil(2500*Math.pow(1.6,S.caixaV-1));}
 function tempoPagar(v){return 2.4*Math.pow(0.86,(v||S.caixaV)-1);}
 function custoLetreiro(){return Math.ceil(20*Math.pow(1.62,S.letreiro-1));}
-function intervalo(l){return 4.5*Math.pow(0.85,(l||S.letreiro)-1);}
+function intervalo(l){return Math.max(60/MAX_CLIENTES_MIN,4.5*Math.pow(0.85,(l||S.letreiro)-1));}
 
 const TAREFAS=[
   {txt:'Cobre 5 clientes no caixa tocando no balão',ic:'💳',meta:()=>[Math.min(S.cobrados,5),5],premio:20},
@@ -1394,7 +1397,7 @@ function renderPainel(){
   } else if(k==='letreiro'){
     h+=`<div class="cab"><div class="ic">📣</div><div><h3>Letreiro da calçada</h3><p>Atrai mais clientes para a adega.</p></div></div>
     <div class="stats"><div class="stat"><span>Clientes por minuto</span><b>${Math.round(60/intervalo())}${S.letreiro<MAX_LETREIRO?` <span class="prox">→ ${Math.round(60/intervalo(S.letreiro+1))}</span>`:''}</b></div></div>`+
-    (S.letreiro<MAX_LETREIRO?btnCusto(custoLetreiro(),'Melhorar','bAcao'):'<button class="btn" disabled>Nível máximo</button>');
+    (S.letreiro<MAX_LETREIRO?btnCusto(custoLetreiro(),'Melhorar','bAcao'):'<button class="btn" disabled>Limite de 30 clientes por minuto</button>');
   }
   el.innerHTML=h;
   $('#btnFechar').onclick=fecharPainel;
