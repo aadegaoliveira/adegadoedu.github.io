@@ -44,7 +44,9 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .tarefa .txt{flex:1;min-width:0;font-size:.88rem;line-height:1.25}
 .tarefa .barra{height:7px;background:var(--trilho);border-radius:4px;margin-top:4px;overflow:hidden;border:1.5px solid var(--contorno)}
 .tarefa .barra i{display:block;height:100%;background:var(--verde);width:0%}
-.tarefa .rec{font-size:.8rem;color:var(--sub);white-space:nowrap;display:flex;align-items:center;gap:3px}
+.tarefa .rec{white-space:nowrap;display:flex;flex-direction:column;align-items:center;line-height:1.1;background:#E7F8EC;color:#24804F;border:2px solid #2A1A12;border-radius:10px;padding:3px 8px}
+.tarefa .rec small{font-size:.7rem;font-weight:900;color:#2A1A12}
+.tarefa .rec b{font-size:.95rem;font-weight:900}
 .tarefa .rec svg{width:16px;height:16px}
 .tarefa button{border:3px solid var(--contorno);border-radius:12px;background:linear-gradient(#5FD38D,var(--verde) 55%,var(--verde-esc));color:#fff;font-family:'Lilita One','Arial Black',sans-serif;-webkit-text-stroke:3px var(--contorno);paint-order:stroke fill;padding:6px 10px;font-size:1rem;box-shadow:0 3px 0 var(--contorno);animation:chama 1s ease-in-out infinite}
 @keyframes chama{50%{transform:scale(1.07)}}
@@ -1065,7 +1067,7 @@ function renderTarefa(){
   if(S.tarefa>=TAREFAS.length){ if(cacheTarefa==='fim') return; cacheTarefa='fim'; el.innerHTML=`<span class="ic">🏆</span><div class="txt">Todas as tarefas concluídas! Continue fazendo a adega crescer.</div><button id="btnTarefa">Ver</button>`; $('#btnTarefa').onclick=()=>{SOM.abrir();$('#telaPrestigio').hidden=false;}; return; }
   const t=TAREFAS[S.tarefa], [a,b]=t.meta(), feito=a>=b;
   const html=`<span class="ic">${t.ic}</span><div class="txt">${t.txt}<div class="barra"><i style="width:${Math.min(100,100*a/b)}%"></i></div></div>`+
-    (feito?`<button id="btnTarefa">Pegar</button>`:`<span class="rec">${NOTA} ${fmt(t.premio*multPrest())}</span>`);
+    (feito?`<button id="btnTarefa">Pegar</button>`:`<span class="rec"><small>🎁 Prêmio</small><b>+${fmt(t.premio*multPrest())}</b></span>`);
   if(html===cacheTarefa) return; cacheTarefa=html; el.innerHTML=html;
   if(feito) $('#btnTarefa').onclick=()=>{ S.din+=t.premio*multPrest(); S.tarefa++; SOM.marco(); atualizarHUD(true); salvar(); if(S.tarefa>=TAREFAS.length) setTimeout(()=>$('#telaPrestigio').hidden=false,400); };
 }
