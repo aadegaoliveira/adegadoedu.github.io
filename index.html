@@ -339,6 +339,8 @@ if(S.operadores>MAX_OPERADORES) S.operadores=MAX_OPERADORES;
 if(S.letreiro>MAX_LETREIRO) S.letreiro=MAX_LETREIRO;
 if(!S.est.mercearia){S.est.mercearia={aberta:false,nivel:1};}
 if(!S.mesas){S.mesas={n:0,nivel:1,garcom:false};}
+if(S.mesas.n>4){ let dev=0; for(let k=4;k<S.mesas.n;k++) dev+=[2500,6000,15000,40000,80000,150000][k]||0; S.din+=dev; S.mesas.n=4; }
+if(!S.mesasExtra) S.mesasExtra={}; if(typeof S.tempoJogo!=='number') S.tempoJogo=0;
 IDS.forEach(id=>{const e=S.est[id]; if(e.estoque===undefined){e.estoque=20+2*(e.nivel-1); e.pedido=0;}}); if(S.pedidos===undefined) S.pedidos=0;
 S.caixas=Math.min(S.caixas,2); S.operadores=Math.min(S.operadores,S.caixas);
 function salvar(){S.salvo=Date.now();if(typeof taxaPorMin==='function'){const t=taxaPorMin();if(t>0)S.taxa=t;}try{localStorage.setItem(CHAVE,JSON.stringify(S));}catch(e){}}
@@ -636,7 +638,28 @@ MESAS_POS.forEach((p,i)=>{
   hit('mesa'+i,g,1.7,1.4,1.0,0,0.6,0);
   mesasObj.push({g,vis,area});
 });
-function atualizarMesas(){ mesasObj.forEach((m,i)=>{ m.vis.visible=i<S.mesas.n; m.area.visible=i===S.mesas.n; }); }
+const MESAS_FIXAS=4, EXTRA_DUR=15*60, EXTRA_ESPERA=15*60;
+function extraEstado(){
+  const t=S.tempoJogo||0, x=S.mesasExtra||{};
+  if(x.ativoAte&&t<x.ativoAte) return {fase:'ativo',resta:x.ativoAte-t};
+  if(x.esperaAte&&t<x.esperaAte) return {fase:'espera',resta:x.esperaAte-t};
+  return {fase:'livre',resta:0};
+}
+const extraAtivo=()=>extraEstado().fase==='ativo';
+function assentoAtivo(i){ const m=Math.floor(i/2); return m<MESAS_FIXAS?m<S.mesas.n:extraAtivo(); }
+const mmss=x=>{x=Math.max(0,Math.ceil(x));return Math.floor(x/60)+':'+String(x%60).padStart(2,'0');};
+function liberarExtras(){
+  if(S.mesas.n<MESAS_FIXAS||extraEstado().fase!=='livre') return false;
+  const t=S.tempoJogo||0; S.mesasExtra={ativoAte:t+EXTRA_DUR,esperaAte:t+EXTRA_DUR+EXTRA_ESPERA};
+  salvar(); atualizarMesas(); SOM.marco(); festa(mesasObj[4].g.position); festa(mesasObj[5].g.position); return true;
+}
+function atualizarMesas(){
+  const ativo=extraAtivo();
+  mesasObj.forEach((m,i)=>{
+    if(i<MESAS_FIXAS){ m.vis.visible=i<S.mesas.n; m.area.visible=i===S.mesas.n; }
+    else { m.vis.visible=ativo||assentos.some(a=>a.mesa===i&&a.estado!=='livre'); m.area.visible=false; }
+  });
+}
 
 // ---------- Caixa ----------
 const CX=new THREE.Vector3(2.4,0,0.9);
@@ -830,7 +853,7 @@ function cobrar(c,modo){
     pilhaValor+=c.valor; SOM.venda();
     pop(topo,'+'+fmt(c.valor),'');
   }
-  const livres=assentos.filter((a,i)=>i<S.mesas.n*2&&a.estado==='livre');
+  const livres=assentos.filter((a,i)=>assentoAtivo(i)&&a.estado==='livre');
   if(livres.length&&Math.random()<CHANCE_MESA){
     const a=pega(livres); a.estado='reservado'; a.cliente=c; c.assento=a; c.estado='indoMesa';
     c.caminho=rota(c.g.position,a.aprox).concat([a.pos.clone()]); return;
@@ -1153,7 +1176,7 @@ function novaAdega(){
   baloesCobrar.forEach(b=>b.style.display='none');
   assentos.forEach(a=>{a.estado='livre';a.valor=0;a.cliente=null;a.t=0;a.copo.visible=false;a.nota.visible=false;});
   FORN.estado='ocioso'; FORN.fila.length=0; FORN.ent.lista=[]; FORN.ent.estado=''; entregador.visible=false; caminhao.visible=false;
-  S=estadoNovo(); S.viuInicio=true; S.apelidosFalidos=falidos; S.falencias=fal; S.pedidos=0; S.mes=mesAtual(); S.totalInicioMes=0;
+  S=estadoNovo(); S.mesasExtra={}; S.tempoJogo=0; S.viuInicio=true; S.apelidosFalidos=falidos; S.falencias=fal; S.pedidos=0; S.mes=mesAtual(); S.totalInicioMes=0;
   IDS.forEach(id=>{const e=S.est[id]; e.estoque=cap(id); e.pedido=0;});
   salvar(); atualizarEstacoes(); atualizarMesas(); atualizarEquipe(); IDS.forEach(atualizarProdutos);
   cacheTarefa=''; ultimoEnvio=''; $('#telaFalencia').hidden=true;
@@ -1322,10 +1345,11 @@ const POS_SELO={
   gelo:()=>new THREE.Vector3(EST.gelo.pos[0],1.6,EST.gelo.pos[2]+0.4),
   mercearia:()=>new THREE.Vector3(EST.mercearia.pos[0],2.5,EST.mercearia.pos[2]),
   mesas:()=>new THREE.Vector3(-3.15,1.7,Z_CORREDOR),
+  mesasExtra:()=>new THREE.Vector3(0.5,1.7,Z_CORREDOR),
   caixa:()=>new THREE.Vector3(CX.x+2.0,1.6,CX.z-0.2),
   letreiro:()=>new THREE.Vector3(cavalete.position.x,1.9,cavalete.position.z)
 };
-Object.keys(POS_SELO).forEach(k=>{const b=document.createElement('button');b.type='button';b.className='selo';b.addEventListener('click',e=>{e.stopPropagation();abrirPainel(k);});$('#selos').appendChild(b);selos[k]=b;});
+Object.keys(POS_SELO).forEach(k=>{const b=document.createElement('button');b.type='button';b.className='selo';b.addEventListener('click',e=>{e.stopPropagation();abrirPainel(k==='mesasExtra'?'mesas':k);});$('#selos').appendChild(b);selos[k]=b;});
 function setSelo(b,cls,html,aria){ if(b.className!==cls) b.className=cls; if(b._h!==html){b._h=html;b.innerHTML=html;} if(aria) b.setAttribute('aria-label',aria); }
 function renderSelos(){
   IDS.forEach(id=>{
@@ -1337,7 +1361,12 @@ function renderSelos(){
   const podeCx=(S.operadores>0&&S.caixaV<MAX_CAIXA_V&&S.din>=custoCaixaV())||(S.caixas<MAX_CAIXAS&&S.din>=CUSTO_CAIXA[S.caixas]*multPrest())||(S.operadores<Math.min(S.caixas,MAX_OPERADORES)&&S.din>=CUSTO_OPERADOR[S.operadores]*multPrest())||(!S.gerente&&S.din>=CUSTO_GERENTE*multPrest());
   setSelo(selos.caixa,'selo'+(podeCx?' pode':''),`🧾 Caixa<span class="seta">▲</span>`,'Caixa');
   if(!S.mesas.n) setSelo(selos.mesas,'selo fechado'+(S.din>=CUSTO_MESA[0]*multPrest()?' pode':''),`🔒 🍽️ ${NOTA} ${fmt(CUSTO_MESA[0]*multPrest())}`,'Abrir mesas');
-  else { const pm=S.din>=custoMesaNivel()||(S.mesas.n<MESAS_POS.length&&S.din>=CUSTO_MESA[S.mesas.n]*multPrest())||(!S.mesas.garcom&&S.din>=CUSTO_GARCOM*multPrest()); setSelo(selos.mesas,'selo'+(pm?' pode':''),`🍽️ Nv ${S.mesas.nivel}<span class="seta">▲</span>`,`Mesas, nível ${S.mesas.nivel}`); }
+  else { const pm=S.din>=custoMesaNivel()||(S.mesas.n<MESAS_FIXAS&&S.din>=CUSTO_MESA[S.mesas.n]*multPrest())||(!S.mesas.garcom&&S.din>=CUSTO_GARCOM*multPrest()); setSelo(selos.mesas,'selo'+(pm?' pode':''),`🍽️ Nv ${S.mesas.nivel}<span class="seta">▲</span>`,`Mesas, nível ${S.mesas.nivel}`); }
+  if(S.mesas.n<MESAS_FIXAS){ selos.mesasExtra.style.display='none'; }
+  else { selos.mesasExtra.style.display=''; const e=extraEstado();
+    if(e.fase==='ativo') setSelo(selos.mesasExtra,'selo pode',`🪑 Extras ⏱ ${mmss(e.resta)}`,`Mesas extras liberadas, faltam ${mmss(e.resta)}`);
+    else if(e.fase==='espera') setSelo(selos.mesasExtra,'selo',`⏳ ${mmss(e.resta)}`,`Mesas extras em descanso, liberam em ${mmss(e.resta)}`);
+    else setSelo(selos.mesasExtra,'selo fechado pode',`🪑 Liberar extras`,'Liberar mesas extras por 15 minutos'); }
   const podeL=S.letreiro<MAX_LETREIRO&&S.din>=custoLetreiro();
   setSelo(selos.letreiro,'selo'+(podeL?' pode':''),`📣 Nv ${S.letreiro}<span class="seta">▲</span>`,'Letreiro da calçada');
 }
@@ -1387,13 +1416,13 @@ function renderPainel(){
     (!S.gerente?btnCusto(CUSTO_GERENTE*multPrest(),'Contratar gerente','bGerente')+`<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700">O gerente recolhe a pilha de dinheiro sozinho enquanto você joga.</p>`:'');
   } else if(k==='mesas'){
     const M=S.mesas;
-    h+=`<div class="cab"><div class="ic">🍽️</div><div><h3>Mesas para consumo no local</h3><p>${M.n?M.n+' de '+MESAS_POS.length+' mesas · nível '+M.nivel:'Ainda fechadas'}</p></div></div>
+    h+=`<div class="cab"><div class="ic">🍽️</div><div><h3>Mesas para consumo no local</h3><p>${M.n?M.n+' de '+MESAS_FIXAS+' mesas · nível '+M.nivel:'Ainda fechadas'}</p></div></div>
     <p style="margin:10px 2px 0;color:var(--sub);font-size:.86rem;font-weight:700;line-height:1.35">Depois de pagar, alguns clientes sentam para consumir. Quando saem, deixam um valor extra na mesa${M.garcom?', e o garçom recolhe sozinho.':': toque em “Recolher” para pegar.'}</p>
     <div class="stats"><div class="stat"><span>Valor deixado por cliente</span><b>${fmt(valorMesa())}${M.n?` <span class="prox">→ ${fmt(valorMesa(M.nivel+1))}</span>`:''}</b></div></div>`+
     (!M.n?btnCusto(CUSTO_MESA[0]*multPrest(),'Abrir as mesas','bMesaNova'):
       btnCusto(custoMesaNivel(),'Melhorar','bAcao')+
-      (M.n<MESAS_POS.length?btnCusto(CUSTO_MESA[M.n]*multPrest(),`Comprar ${M.n+1}ª mesa`,'bMesaNova'):'')+
-      (!M.garcom?btnCusto(CUSTO_GARCOM*multPrest(),'Contratar garçom','bGarcom'):''));
+      (M.n<MESAS_FIXAS?btnCusto(CUSTO_MESA[M.n]*multPrest(),`Comprar ${M.n+1}ª mesa`,'bMesaNova'):'')+
+      (!M.garcom?btnCusto(CUSTO_GARCOM*multPrest(),'Contratar garçom','bGarcom'):''))+blocoExtras();
   } else if(k==='letreiro'){
     h+=`<div class="cab"><div class="ic">📣</div><div><h3>Letreiro da calçada</h3><p>Atrai mais clientes para a adega.</p></div></div>
     <div class="stats"><div class="stat"><span>Clientes por minuto</span><b>${Math.round(60/intervalo())}${S.letreiro<MAX_LETREIRO?` <span class="prox">→ ${Math.round(60/intervalo(S.letreiro+1))}</span>`:''}</b></div></div>`+
@@ -1404,12 +1433,23 @@ function renderPainel(){
   const ba=$('#bAcao'); if(ba) ba.onclick=()=>acao(k);
   const bc=$('#bCaixa'); if(bc) bc.onclick=()=>{const c=CUSTO_CAIXA[S.caixas]*multPrest(); if(S.din<c) return; S.din-=c; S.caixas++; comprado(); atualizarEquipe();};
   const bp=$('#bPedir'); if(bp) bp.onclick=()=>{ if(pedir(k)) renderPainel(); };
+  const bx=$('#bExtra'); if(bx) bx.onclick=()=>{ liberarExtras(); renderPainel(); renderSelos(); };
   const bmn=$('#bMesaNova'); if(bmn) bmn.onclick=()=>{const c=CUSTO_MESA[S.mesas.n]*multPrest(); if(S.din<c) return; S.din-=c; S.mesas.n++; atualizarMesas(); atualizarEquipe(); festa(mesasObj[S.mesas.n-1].g.position); comprado();};
   const bgc=$('#bGarcom'); if(bgc) bgc.onclick=()=>{const c=CUSTO_GARCOM*multPrest(); if(S.din<c) return; S.din-=c; S.mesas.garcom=true; atualizarEquipe(); comprado();};
   const bo=$('#bOper'); if(bo) bo.onclick=()=>{const c=CUSTO_OPERADOR[S.operadores]*multPrest(); if(S.din<c||S.operadores>=MAX_OPERADORES) return; S.din-=c; S.operadores++; comprado(); atualizarEquipe();};
   const bg=$('#bGerente'); if(bg) bg.onclick=()=>{const c=CUSTO_GERENTE*multPrest(); if(S.din<c) return; S.din-=c; S.gerente=true; comprado(); atualizarEquipe();};
   const bm=$('#bMax');
   if(bm){ const n=quantosCompra(k); $('#bMaxTxt').textContent=n?`+${n} níveis`:'sem dinheiro'; bm.disabled=!n; bm.onclick=()=>{ const n2=quantosCompra(k); for(let i=0;i<n2;i++) acao(k,true); comprado(); }; }
+}
+function textoExtra(){ const e=extraEstado(); return e.fase==='ativo'?`🟢 Liberadas · faltam ${mmss(e.resta)}`:e.fase==='espera'?`⏳ Descansando · ${mmss(e.resta)}`:'✅ Prontas para liberar'; }
+let faseExtraPainel='';
+function blocoExtras(){
+  const M=S.mesas, nota='margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700;line-height:1.35';
+  if(M.n<MESAS_FIXAS) return `<p style="${nota}">Com as 4 mesas compradas, você libera também 2 mesas extras na frente do balcão, por tempo limitado.</p>`;
+  faseExtraPainel=extraEstado().fase;
+  return `<div class="stats" style="margin-top:14px"><div class="stat"><span>🪑 Mesas extras (2)</span><b id="extraStatus">${textoExtra()}</b></div></div>`+
+    (faseExtraPainel==='livre'?`<button class="btn azul" id="bExtra">Liberar mesas extras por 15 min</button>`:'')+
+    `<p style="${nota}">As 2 mesas na frente do balcão são temporárias: ficam 15 minutos liberadas e depois descansam 15 minutos. O tempo só corre com o jogo aberto.</p>`;
 }
 function quantosCompra(k){ let d=S.din,n=S.est[k].nivel,q=0; while(q<500){ const c=Math.ceil(EST[k].custo*Math.pow(1.2,n-1)); if(d<c) break; d-=c; n++; q++; } return q; }
 function acao(k,silencioso){
@@ -1466,7 +1506,7 @@ canvas.addEventListener('pointerup',e=>{
   if(!h){ fecharPainel(); return; }
   const a=h.object.userData.alvo;
   if(a==='pilha'){ if(pilhaValor>=1) coletar(); else abrirPainel('caixa'); }
-  else if(a.indexOf('mesa')===0){ const i=+a.slice(4); if(i>=S.mesas.n||!recolherMesa(i)) abrirPainel('mesas'); }
+  else if(a.indexOf('mesa')===0){ const i=+a.slice(4); if(!recolherMesa(i)) abrirPainel('mesas'); }
   else abrirPainel(a);
 });
 canvas.addEventListener('wheel',e=>{e.preventDefault();meiaLarg=THREE.MathUtils.clamp(meiaLarg*(e.deltaY>0?1.1:0.9),3.5,9);ajustar();},{passive:false});
@@ -1511,6 +1551,7 @@ function laco(){
   requestAnimationFrame(laco);
   const dt=Math.min(relogio.getDelta(),0.05);
   if(document.body.classList.contains('jogando')){
+    S.tempoJogo=(S.tempoJogo||0)+dt;
     proxCliente-=dt;
     if(proxCliente<=0){ if(clientes.length<18) novoCliente(); proxCliente=intervalo()*rnd(0.75,1.25); }
     atualizarClientes(dt);
@@ -1519,7 +1560,7 @@ function laco(){
     if(S.mesas.garcom){ assentos.forEach(a=>{ if(a.estado==='sujo'){ a.t+=dt; if(a.t>2.5) recolherMesa(a.mesa,true); } }); }
     assentos.forEach(a=>{ if(a.estado==='sujo') a.nota.position.y=0.03+Math.abs(Math.sin(performance.now()/250))*0.04; });
     checarFalencia(dt);
-    tSelos+=dt; if(tSelos>0.5){ tSelos=0; atualizarAlerta(); if(autoRepor()) IDS.forEach(id=>{ const e=S.est[id]; if(e.aberta&&e.estoque+e.pedido<=cap(id)*0.35) pedir(id,true); }); renderSelos(); renderTarefa(); if(painelAtual) { const bm=$('#bMaxTxt'); if(bm&&IDS.includes(painelAtual)){ const n=quantosCompra(painelAtual); bm.textContent=n?`+${n} níveis`:'sem dinheiro'; $('#bMax').disabled=!n; } const ba=$('#bAcao'); if(ba){ /* atualiza estado dos botões */ renderPainelLeve(); } } }
+    tSelos+=dt; if(tSelos>0.5){ tSelos=0; atualizarAlerta(); atualizarMesas(); if(painelAtual==='mesas'&&S.mesas.n>=MESAS_FIXAS){ if(extraEstado().fase!==faseExtraPainel) renderPainel(); else { const es=$('#extraStatus'); if(es) es.textContent=textoExtra(); } } if(autoRepor()) IDS.forEach(id=>{ const e=S.est[id]; if(e.aberta&&e.estoque+e.pedido<=cap(id)*0.35) pedir(id,true); }); renderSelos(); renderTarefa(); if(painelAtual) { const bm=$('#bMaxTxt'); if(bm&&IDS.includes(painelAtual)){ const n=quantosCompra(painelAtual); bm.textContent=n?`+${n} níveis`:'sem dinheiro'; $('#bMax').disabled=!n; } const ba=$('#bAcao'); if(ba){ /* atualiza estado dos botões */ renderPainelLeve(); } } }
   }
   // pilha de notas
   const n=pilhaValor<1?0:Math.min(16,1+Math.floor(Math.log2(pilhaValor+1)*1.6));
