@@ -40,6 +40,21 @@ button:disabled{opacity:.5;cursor:default}
 .status{font-weight:900;font-size:1.1rem}
 .pequeno{font-size:.85rem;color:var(--sub);margin-top:10px}
 a{color:inherit}
+h2{font-size:1.15rem;margin:0}
+.cab-res{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cab-res button{padding:9px 12px;font-size:.95rem}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.num{border:2px solid var(--borda);border-radius:12px;padding:8px 10px;background:var(--fundo)}
+.num b{display:block;font-size:1.35rem;font-weight:900;font-variant-numeric:tabular-nums}
+.num span{font-size:.82rem;color:var(--sub)}
+.num.dest{background:var(--verde-claro)}
+.sub-tit{font-weight:800;margin:16px 0 6px;font-size:.95rem}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid color-mix(in srgb,var(--sub) 35%,transparent)}
+th{color:var(--sub);font-weight:700;font-size:.8rem}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.vazio{color:var(--sub);font-size:.9rem;margin:6px 0}
+.rolagem{overflow-x:auto}
 </style>
 </head>
 <body>
@@ -61,6 +76,11 @@ a{color:inherit}
       <button id="btnUsar" type="button" class="prim" disabled>Dar baixa</button>
     </div>
     <div id="resultado" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="cartao" id="boxResumo">
+    <div class="cab-res"><h2>Resumo dos cupons</h2><button type="button" id="btnResumo">Atualizar</button></div>
+    <div id="resumo"><p class="vazio">Digite a senha e toque em Atualizar para ver o resumo.</p></div>
   </section>
 </main>
 <script>
@@ -105,6 +125,50 @@ $('#btnConsultar').addEventListener('click',async()=>{
   }catch(e){ erro(e); }
   finally{ $('#btnConsultar').disabled=false; }
 });
+const nomeMes=m=>{ const [a,mm]=m.split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+mm-1]+'/'+a; };
+function el(tag,cls,txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!==undefined) e.textContent=txt; return e; }
+function cartaoNum(rot,val,dest){ const d=el('div','num'+(dest?' dest':'')); d.append(el('b','',val),el('span','',rot)); return d; }
+function tabela(cols,linhas){
+  const w=el('div','rolagem'), t=el('table'), th=el('tr');
+  cols.forEach(c=>{ const x=el('th',c[1]?'n':'',c[0]); th.appendChild(x); }); t.appendChild(th);
+  linhas.forEach(l=>{ const tr=el('tr'); l.forEach((v,i)=>tr.appendChild(el('td',cols[i][1]?'n':'',v))); t.appendChild(tr); });
+  w.appendChild(t); return w;
+}
+async function carregarResumo(){
+  const senha=$('#senha').value, box=$('#resumo');
+  if(!senha){ box.innerHTML='<p class="vazio">Digite a senha do balcão lá em cima.</p>'; return; }
+  $('#btnResumo').disabled=true; box.innerHTML='<p class="vazio">Carregando…</p>';
+  try{
+    const r=await rpc('resumo_cupons',{p_senha:senha});
+    box.innerHTML='';
+    const m=r.mes_atual, g=r.geral;
+    box.appendChild(el('div','sub-tit','Este mês ('+nomeMes(r.mes)+')'));
+    const g1=el('div','grade');
+    g1.append(cartaoNum('cupons gerados',String(m.gerados)),cartaoNum('cupons usados',String(m.usados)),
+      cartaoNum('desconto já dado',reais(m.valor_usado),true),cartaoNum('ainda podem ser usados',String(m.validos)));
+    box.appendChild(g1);
+    box.appendChild(el('div','sub-tit','Desde o início'));
+    const g2=el('div','grade');
+    g2.append(cartaoNum('cupons gerados',String(g.gerados)),cartaoNum('cupons usados',String(g.usados)),
+      cartaoNum('desconto já dado',reais(g.valor_usado),true),cartaoNum('vencidos sem uso',String(g.vencidos)));
+    box.appendChild(g2);
+    box.appendChild(el('div','sub-tit','Por mês'));
+    if(r.por_mes.length) box.appendChild(tabela([['Mês'],['Gerados',1],['Usados',1],['Desconto dado',1]],r.por_mes.map(x=>[nomeMes(x.mes),String(x.gerados),String(x.usados),reais(x.valor_usado)])));
+    else box.appendChild(el('p','vazio','Nenhum cupom gerado ainda.'));
+    box.appendChild(el('div','sub-tit','Quem mais gerou cupons este mês'));
+    if(r.jogadores_mes.length) box.appendChild(tabela([['Jogador'],['Cupons',1],['Usados',1],['Valor',1]],r.jogadores_mes.map(x=>[x.apelido,String(x.cupons),String(x.usados),reais(x.valor)])));
+    else box.appendChild(el('p','vazio','Ninguém gerou cupom este mês.'));
+    box.appendChild(el('div','sub-tit','Últimos cupons usados no balcão'));
+    if(r.ultimos_usados.length) box.appendChild(tabela([['Quando'],['Jogador'],['Código'],['Valor',1]],r.ultimos_usados.map(x=>[dataHora(x.usado_em),x.apelido,x.codigo,reais(x.valor)])));
+    else box.appendChild(el('p','vazio','Nenhum cupom usado ainda.'));
+    try{ sessionStorage.setItem('senhaBalcao',senha); }catch(e){}
+  }catch(e){
+    box.innerHTML=''; const k=Object.keys(MSG).find(x=>e.message.indexOf(x)>=0);
+    box.appendChild(el('p','vazio',k?MSG[k]:(/resumo_cupons/.test(e.message)?'O resumo ainda não foi instalado no banco. Rode o supabase-resumo-cupons.sql no Supabase.':'Não foi possível carregar o resumo. Confira a internet.')));
+  }finally{ $('#btnResumo').disabled=false; }
+}
+$('#btnResumo').addEventListener('click',carregarResumo);
+if($('#senha').value) setTimeout(carregarResumo,300);
 $('#btnUsar').addEventListener('click',async()=>{
   if(!atual) return;
   if(!confirm(`Dar baixa no cupom ${atual.codigo} de ${reais(atual.valor_centavos)} (${atual.apelido})? Depois disso ele não pode ser usado de novo.`)) return;
@@ -115,7 +179,7 @@ $('#btnUsar').addEventListener('click',async()=>{
     r.querySelector('.status').textContent='✔ Baixa feita';
     r.querySelector('.valor').textContent='Desconte '+reais(x.valor_centavos);
     r.querySelector('p').textContent=`Cupom ${x.codigo} de ${x.apelido} usado em ${dataHora(x.usado_em)}. Aplique o desconto em produtos não alcoólicos.`;
-    atual=null; $('#codigo').value='';
+    atual=null; $('#codigo').value=''; carregarResumo();
   }catch(e){ erro(e); }
 });
 })();
