@@ -1,4 +1,4 @@
-const CACHE='adega-edu-v1';
+const CACHE='adega-edu-v3';
 const ARQUIVOS=['./','index.html','three.min.js','manifest.json','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ARQUIVOS))); self.skipWaiting(); });
 self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(n=>Promise.all(n.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); self.clients.claim(); });
