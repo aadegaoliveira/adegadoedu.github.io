@@ -899,7 +899,7 @@ const baloesCobrar=[0,1,2].map(k=>{
   const b=document.createElement('button'); b.type='button'; b.className='cobrar';
   b.innerHTML='<span class="ln"><span class="cart">💳</span><span class="tx"></span></span><span class="br"><i></i></span>';
   b.addEventListener('pointerdown',e=>{e.stopPropagation();});
-  b.addEventListener('click',e=>{e.stopPropagation(); const c=pagando[k]; if(c&&c.estado==='noCaixa') cobrar(c,'manual');});
+  b.addEventListener('click',e=>{e.stopPropagation(); const c=pagando[k]; if(c&&c.estado==='noCaixa'&&!(k===0&&caixaAusente())) cobrar(c,'manual');});
   $('#cobrancas').appendChild(b); return b;
 });
 function cobrar(c,modo){
@@ -954,7 +954,7 @@ function posicionarMesas(){
 function posicionarCobrancas(){
   for(let k=0;k<3;k++){
     const c=pagando[k], b=baloesCobrar[k];
-    if(!c||c.estado!=='noCaixa'||!document.body.classList.contains('jogando')){ b.style.display='none'; continue; }
+    if(!c||c.estado!=='noCaixa'||!document.body.classList.contains('jogando')||(k===0&&caixaAusente())){ b.style.display='none'; continue; }
     const t=naTela(c.g.position.clone().setY(1.95));
     b.style.display='flex'; b.style.left=t.x+'px'; b.style.top=t.y+'px';
     const auto=automatico(k), barra=b.querySelector('.br i');
@@ -990,8 +990,8 @@ function atualizarClientes(dt){
       case 'fila': mover(c,dt); if(!c.caminho.length) olhar(c,new THREE.Vector3(0,0,-1)); break;
       case 'indoPagar': if(mover(c,dt)){ c.estado='noCaixa'; c.t=0; } break;
       case 'noCaixa':
-        olhar(c,new THREE.Vector3(0,0,-1)); c.t+=dt;
-        if(automatico(c.caixa)&&c.t>=tempoPagar()) cobrar(c,'auto');
+        olhar(c,new THREE.Vector3(0,0,-1));
+        if(!(c.caixa===0&&caixaAusente())){ c.t+=dt; if(automatico(c.caixa)&&c.t>=tempoPagar()) cobrar(c,'auto'); }
         break;
       case 'indoMesa': if(mover(c,dt)){ const a=c.assento; c.estado='sentado'; c.t=TEMPO_MESA; a.estado='ocupado'; a.copo.visible=true; c.g.rotation.y=Math.atan2(-a.lado,0); c.g.position.y=0.02; c.g.userData.pE.rotation.x=c.g.userData.pD.rotation.x=-1.35; c.g.userData.sacola.visible=false; } break;
       case 'sentado':{
@@ -1007,6 +1007,7 @@ function atualizarClientes(dt){
     }
   }
   for(let k=0;k<S.caixas;k++){
+    if(k===0&&caixaAusente()) continue;
     if(!pagando[k]&&fila.length&&fila[0].caminho.length===0){
       const c=fila.shift(); c.posFila=-1; pagando[k]=c; c.caixa=k; c.estado='indoPagar'; irPara(c,pontoPagar(k)); reordenarFila();
     }
@@ -1050,7 +1051,7 @@ function pedir(id,auto){
   if(q<=0) return false;
   if(auto&&q<Math.min(5,faltando(id))) return false;
   S.din-=c; S.est[id].pedido+=q; S.pedidos=(S.pedidos||0)+1;
-  if(FORN.fila.indexOf(id)<0&&FORN.ent.lista.indexOf(id)<0) FORN.fila.push(id);
+  if(FORN.fila.indexOf(id)<0&&G.lista.indexOf(id)<0) FORN.fila.push(id);
   pop(objEst[id].g.position.clone().setY(2.7),(auto?'Pedido automático 🚚':'Pedido feito 🚚'),'');
   if(!auto) SOM.comprar();
   atualizarHUD(!auto); salvar(); return true;
@@ -1071,19 +1072,64 @@ function entregarEstoque(id){
   pop(objEst[id].g.position.clone().setY(2.7),'📦 Estoque cheio!','grande'); SOM.marco(); salvar();
   if(painelAtual===id) renderPainel();
 }
-function atualizarFornecedor(dt){
-  const F=FORN, E=F.ent;
-  if(F.estado==='ocioso'){ if(F.fila.length){ F.estado='chegando'; caminhao.visible=true; caminhao.position.set(-16,0,Z_RUA); } return; }
-  if(F.estado==='chegando'||F.estado==='saindo'){
-    caminhao.position.x+=7*dt; rodas.forEach(r=>r.rotation.y-=dt*12);
-    if(F.estado==='chegando'&&caminhao.position.x>=PARADA_X){ caminhao.position.x=PARADA_X; F.estado='descarregando'; iniciarViagem(); }
-    if(F.estado==='saindo'&&caminhao.position.x>18){ caminhao.visible=false; F.estado='ocioso'; }
-    return;
+// O caminhão estaciona e espera. Quem recebe e repõe: o gerente; sem gerente, quem está no 1º caixa (após o toque do jogador).
+const POSTO_GERENTE=gerente.position.clone();
+const caixaGer=new THREE.Group(); caixaGer.position.set(0,0.98,0.3); caixaGer.visible=false;
+[0,0.26].forEach(y=>{contorno(malha(geoArred(0.42,0.24,0.32,0.03),toon(0xC8935A),caixaGer,0,y,0),0.015); malha(new THREE.BoxGeometry(0.08,0.245,0.325),toon(0xE8D2A8),caixaGer,0,y,0,false);});
+const G={g:gerente,posto:POSTO_GERENTE.clone(),quem:'gerente',caminho:[],vel:2.4,passo:0,estado:'livre',lista:[],t:0};
+const figuraCaixa=()=>S.operadores>0?atendentes[0]:edus[0];
+const caixaAusente=()=>G.estado!=='livre'&&G.quem==='caixa';
+function iniciarRecebimento(pessoaQueRecebe,quem){
+  G.g=pessoaQueRecebe; G.quem=quem; G.posto=pessoaQueRecebe.position.clone(); G.passo=0;
+  pessoaQueRecebe.userData.corpo.add(caixaGer); caixaGer.visible=false;
+  G.estado='indoCaminhao'; G.caminho=rota(pessoaQueRecebe.position,PORTA).concat([FORA_PORTA.clone(),CALCADA_PT.clone(),DESCARGA.clone()]);
+}
+const btnReceber=document.createElement('button'); btnReceber.type='button'; btnReceber.className='cobrar';
+btnReceber.innerHTML='<span class="ln"><span class="cart">📦</span><span class="tx">Receber mercadoria</span></span>';
+btnReceber.addEventListener('pointerdown',e=>e.stopPropagation());
+btnReceber.addEventListener('click',e=>{ e.stopPropagation(); receberSemGerente(); });
+$('#cobrancas').appendChild(btnReceber);
+function receberSemGerente(){
+  if(FORN.estado!=='parado'||S.gerente||G.estado!=='livre') return;
+  SOM.abrir(); iniciarRecebimento(figuraCaixa(),'caixa');
+  pop(G.g.position.clone().setY(2.1),'Fui buscar a mercadoria!','');
+}
+function posicionarReceber(){
+  if(FORN.estado==='parado'&&!S.gerente&&G.estado==='livre'&&document.body.classList.contains('jogando')){
+    const t=naTela(caminhao.position.clone().setY(2.6)); btnReceber.style.display='flex'; btnReceber.style.left=t.x+'px'; btnReceber.style.top=t.y+'px';
+  } else btnReceber.style.display='none';
+}
+function proximoSetorGerente(){
+  if(G.lista.length){ G.estado='indoSetor'; G.caminho=rota(G.g.position,pontoEst(G.lista[0],1)); }
+  else { caixaGer.visible=false; G.estado='voltandoPosto'; G.caminho=rota(G.g.position,G.posto).concat([G.posto.clone()]); }
+}
+function atualizarGerente(dt){
+  if(G.estado==='livre') return;
+  const p=G.g, u=p.userData;
+  if(G.estado==='indoCaminhao'){ if(mover(G,dt)){ G.estado='pegandoCaixas'; G.t=0.9; p.rotation.y=0; } }
+  else if(G.estado==='pegandoCaixas'){
+    G.t-=dt; u.corpo.rotation.x=Math.sin(G.t*8)*0.15;
+    if(G.t<=0){ u.corpo.rotation.x=0; G.lista=FORN.fila.splice(0); caixaGer.visible=G.lista.length>0; FORN.estado='saindo';
+      pop(p.position.clone().setY(2.1),'📦 Mercadoria recebida',''); G.estado='voltandoLoja'; G.caminho=[CALCADA_PT.clone(),FORA_PORTA.clone(),PORTA.clone()]; }
   }
-  if(E.estado==='indoLoja'){ if(mover(E,dt)) proximoSetor(); }
-  else if(E.estado==='indoSetor'){ if(mover(E,dt)){ entregarEstoque(E.lista.shift()); E.estado='largando'; E.t=0.7; } }
-  else if(E.estado==='largando'){ E.t-=dt; entregador.userData.corpo.rotation.x=Math.sin(E.t*8)*0.15; if(E.t<=0){ entregador.userData.corpo.rotation.x=0; proximoSetor(); } }
-  else if(E.estado==='voltando'){ if(mover(E,dt)){ if(F.fila.length) iniciarViagem(); else { entregador.visible=false; E.estado=''; F.estado='saindo'; } } }
+  else if(G.estado==='voltandoLoja'){ if(mover(G,dt)) proximoSetorGerente(); }
+  else if(G.estado==='indoSetor'){ if(mover(G,dt)){ entregarEstoque(G.lista.shift()); G.estado='repondo'; G.t=0.8; } }
+  else if(G.estado==='repondo'){ G.t-=dt; u.corpo.rotation.x=Math.sin(G.t*8)*0.15; if(G.t<=0){ u.corpo.rotation.x=0; proximoSetorGerente(); } }
+  else if(G.estado==='voltandoPosto'){ if(mover(G,dt)){ G.estado='livre'; p.rotation.y=0; } }
+}
+function atualizarFornecedor(dt){
+  const F=FORN;
+  if(F.estado==='ocioso'){ if(F.fila.length){ F.estado='chegando'; caminhao.visible=true; caminhao.position.set(-16,0,Z_RUA); } }
+  else if(F.estado==='chegando'||F.estado==='saindo'){
+    caminhao.position.x+=7*dt; rodas.forEach(r=>r.rotation.y-=dt*12);
+    if(F.estado==='chegando'&&caminhao.position.x>=PARADA_X){ caminhao.position.x=PARADA_X; F.estado='parado'; }
+    if(F.estado==='saindo'&&caminhao.position.x>18){ caminhao.visible=false; F.estado='ocioso'; }
+  }
+  else if(F.estado==='parado'){
+    if(!F.fila.length&&G.estado==='livre'){ F.estado='saindo'; }
+    else if(S.gerente&&G.estado==='livre'){ iniciarRecebimento(gerente,'gerente'); }
+  }
+  atualizarGerente(dt);
 }
 
 // ================= Ranking online (Supabase) =================
@@ -1205,7 +1251,7 @@ $('#alertaBtn').addEventListener('click',e=>{ e.stopPropagation(); const id=$('#
 function semSaida(){
   const abertas=IDS.filter(i=>S.est[i].aberta);
   if(abertas.some(i=>S.est[i].estoque>0||S.est[i].pedido>0)) return false;
-  if(FORN.estado!=='ocioso'||pilhaValor>=1) return false;
+  if(FORN.estado!=='ocioso'||pilhaValor>=1||G.estado!=='livre') return false;
   if(assentos.some(a=>a.estado!=='livre')) return false;
   if(clientes.some(c=>c.valor>0&&c.estado!=='saindo')) return false;
   if(S.tarefa<TAREFAS.length){ const m=TAREFAS[S.tarefa].meta(); if(m[0]>=m[1]) return false; }
@@ -1243,6 +1289,8 @@ function novaAdega(){
   baloesCobrar.forEach(b=>b.style.display='none');
   assentos.forEach(a=>{a.estado='livre';a.valor=0;a.cliente=null;a.t=0;a.copo.visible=false;a.nota.visible=false;});
   FORN.estado='ocioso'; FORN.fila.length=0; FORN.ent.lista=[]; FORN.ent.estado=''; entregador.visible=false; caminhao.visible=false;
+  if(G.estado!=='livre'){ G.g.position.copy(G.posto); G.g.rotation.y=0; G.g.userData.corpo.position.y=0; G.g.userData.corpo.rotation.x=0; }
+  G.estado='livre'; G.lista=[]; G.caminho=[]; caixaGer.visible=false; gerente.position.copy(POSTO_GERENTE); gerente.rotation.y=0;
   S=estadoNovo(); S.mesasExtra={}; S.tempoJogo=0; S.viuInicio=true; S.apelidosFalidos=falidos; S.falencias=fal; S.pedidos=0; S.mes=mesAtual(); S.totalInicioMes=0;
   IDS.forEach(id=>{const e=S.est[id]; e.estoque=cap(id); e.pedido=0;});
   salvar(); atualizarEstacoes(); atualizarMesas(); atualizarEquipe(); IDS.forEach(atualizarProdutos);
@@ -1441,7 +1489,7 @@ function renderSelos(){
 function posicionarSelos(){
   Object.keys(POS_SELO).forEach(k=>{const t=naTela(POS_SELO[k]());selos[k].style.left=t.x+'px'; selos[k].style.top=t.y+'px';});
   const ph=$('#pilha');
-  if(pilhaValor>=1&&!S.gerente){ const t=naTela(pilhaG.position.clone().setY(1.7)); ph.style.display='block'; ph.innerHTML=`${fmt(pilhaValor)}<small>toque para recolher</small>`; ph.style.transform=`translate(${t.x}px,${t.y}px) translate(-50%,-100%)`; }
+  if(pilhaValor>=1&&(!S.gerente||G.estado!=='livre')){ const t=naTela(pilhaG.position.clone().setY(1.7)); ph.style.display='block'; ph.innerHTML=`${fmt(pilhaValor)}<small>toque para recolher</small>`; ph.style.transform=`translate(${t.x}px,${t.y}px) translate(-50%,-100%)`; }
   else ph.style.display='none';
 }
 
@@ -1481,7 +1529,7 @@ function renderPainel(){
     (S.operadores<Math.min(S.caixas,MAX_OPERADORES)?btnCusto(CUSTO_OPERADOR[S.operadores]*multPrest(),'Contratar operador','bOper'):'')+
     (S.caixas<MAX_CAIXAS?btnCusto(CUSTO_CAIXA[S.caixas]*multPrest(),`Abrir ${S.caixas+1}º caixa`,'bCaixa'):'')+
     (S.operadores>0?(S.caixaV<MAX_CAIXA_V?btnCusto(custoCaixaV(),'Operador mais rápido','bAcao'):'<button class="btn" disabled>Velocidade máxima</button>'):'')+
-    (!S.gerente?btnCusto(CUSTO_GERENTE*multPrest(),'Contratar gerente','bGerente')+`<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700">O gerente recolhe a pilha de dinheiro sozinho enquanto você joga.</p>`:'');
+    (!S.gerente?btnCusto(CUSTO_GERENTE*multPrest(),'Contratar gerente','bGerente')+`<p style="margin:8px 2px 0;color:var(--sub);font-size:.85rem;font-weight:700">O gerente recolhe a pilha de dinheiro sozinho e recebe o caminhão do fornecedor, repondo os produtos nos setores.</p>`:'');
   } else if(k==='mesas'){
     const M=S.mesas;
     h+=`<div class="cab"><div class="ic">🍽️</div><div><h3>Mesas para consumo no local</h3><p>${M.n?M.n+' de '+MESAS_FIXAS+' mesas · nível '+M.nivel:'Ainda fechadas'}</p></div></div>
@@ -1624,7 +1672,7 @@ function laco(){
     if(proxCliente<=0){ if(clientes.length<18) novoCliente(); proxCliente=intervalo()*rnd(0.75,1.25); }
     atualizarClientes(dt);
     atualizarFornecedor(dt);
-    if(S.gerente){ tGerente+=dt; if(tGerente>2.5){ tGerente=0; if(pilhaValor>=1) coletar('gerente'); } gerente.rotation.y=Math.sin(performance.now()/900)*0.4; }
+    if(S.gerente&&G.estado==='livre'){ tGerente+=dt; if(tGerente>2.5){ tGerente=0; if(pilhaValor>=1) coletar('gerente'); } gerente.rotation.y=Math.sin(performance.now()/900)*0.4; }
     if(S.mesas.garcom){ assentos.forEach(a=>{ if(a.estado==='sujo'){ a.t+=dt; if(a.t>2.5) recolherMesa(a.mesa,true); } }); }
     assentos.forEach(a=>{ if(a.estado==='sujo') a.nota.position.y=0.03+Math.abs(Math.sin(performance.now()/250))*0.04; });
     checarFalencia(dt);
@@ -1634,9 +1682,9 @@ function laco(){
   const n=pilhaValor<1?0:Math.min(16,1+Math.floor(Math.log2(pilhaValor+1)*1.6));
   notas.forEach((m,i)=>m.visible=i<n);
   // atendentes balançando
-  atendentes.concat(edus).forEach((a,i)=>{ if(a.visible) a.userData.corpo.position.y=Math.abs(Math.sin(performance.now()/300+i))*0.03; });
+  atendentes.concat(edus).forEach((a,i)=>{ if(a.visible&&!(G.estado!=='livre'&&G.g===a)) a.userData.corpo.position.y=Math.abs(Math.sin(performance.now()/300+i))*0.03; });
   for(let i=confetes.length-1;i>=0;i--){const c=confetes[i];c.t+=dt;c.v.y-=6*dt;c.m.position.addScaledVector(c.v,dt);c.m.rotation.x+=c.r.x*dt;c.m.rotation.y+=c.r.y*dt;if(c.t>1.4||c.m.position.y<0.05){scene.remove(c.m);c.m.geometry.dispose();c.m.material.dispose();confetes.splice(i,1);}}
-  posicionarSelos(); posicionarCobrancas(); posicionarMesas();
+  posicionarSelos(); posicionarCobrancas(); posicionarMesas(); posicionarReceber();
   renderer.render(scene,cam);
 }
 function renderPainelLeve(){
