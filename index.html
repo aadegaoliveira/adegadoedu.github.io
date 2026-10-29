@@ -128,6 +128,8 @@ body:not(.jogando) .cobrar{display:none !important}
 .aceite input{width:24px;height:24px;flex:none;accent-color:#3CB371;margin:0}
 .aceite a{color:var(--azul-esc)}
 :root:not([data-theme="light"]) .aceite a{color:#8CC8FF}
+.link-btn{display:block;width:100%;margin-top:12px;background:none;border:none;color:var(--azul-esc);font-weight:900;text-decoration:underline;font-size:.95rem;padding:6px}
+:root:not([data-theme="light"]) .link-btn{color:#8CC8FF}
 .erro{color:var(--vermelho);font-weight:800;min-height:1.2em;margin:10px 0 0}
 .tela{touch-action:pan-y}
 #dinheiro{cursor:pointer}
@@ -193,9 +195,34 @@ body:not(.jogando) .alerta{display:none}
     <p class="txt centro" id="cadTexto">Crie seu perfil de jogador para entrar no ranking de quem mais fatura na adega.</p>
     <label class="campo"><span>Nome ou apelido</span><input id="cadNome" maxlength="20" autocomplete="nickname" placeholder="Como você quer aparecer no ranking"></label>
     <label class="campo"><span>Idade</span><input id="cadIdade" type="number" inputmode="numeric" min="1" max="120" placeholder="Sua idade"></label>
+    <label class="campo"><span>Crie uma senha</span><input id="cadSenha" type="password" maxlength="30" autocomplete="new-password" placeholder="Mínimo 4 caracteres, para entrar em outros aparelhos"></label>
     <label class="aceite"><input type="checkbox" id="cadAceite"><span>Li e aceito a <a href="privacidade.html" target="_blank" rel="noopener">política de privacidade</a>. Meu nome ou apelido e meu faturamento no jogo vão aparecer no ranking; a idade não aparece.</span></label>
     <p class="erro" id="cadErro" role="alert"></p>
     <button class="btn" id="btnCadastrar">Começar</button>
+    <button type="button" class="link-btn" id="btnIrEntrar">Já tenho cadastro: entrar</button>
+  </div>
+</section>
+
+<section class="tela" id="telaLogin" hidden>
+  <div class="caixa">
+    <h1 class="titulo grande centro">Adega do Edu</h1>
+    <p class="txt centro">Entre com o seu apelido e senha para continuar a sua adega de onde parou.</p>
+    <label class="campo"><span>Apelido</span><input id="logNome" maxlength="20" autocomplete="username" placeholder="Seu apelido no ranking"></label>
+    <label class="campo"><span>Senha</span><input id="logSenha" type="password" maxlength="30" autocomplete="current-password" placeholder="Sua senha"></label>
+    <p class="erro" id="logErro" role="alert"></p>
+    <button class="btn" id="btnEntrar">Entrar</button>
+    <button type="button" class="link-btn" id="btnIrCadastro">Criar um cadastro novo</button>
+  </div>
+</section>
+
+<section class="tela" id="telaSenha" hidden>
+  <div class="caixa">
+    <h2 class="titulo" style="font-size:1.9rem">Proteja seu apelido</h2>
+    <p class="txt">Crie uma senha para o apelido <b id="senhaNome"></b>. Com ela, você entra no jogo em qualquer celular ou navegador e continua a sua adega de onde parou.</p>
+    <label class="campo"><span>Nova senha</span><input id="novaSenha" type="password" maxlength="30" autocomplete="new-password" placeholder="Mínimo 4 caracteres"></label>
+    <p class="erro" id="senhaErro" role="alert"></p>
+    <button class="btn" id="btnSalvarSenha">Salvar senha</button>
+    <button type="button" class="link-btn" id="btnSenhaDepois">Agora não</button>
   </div>
 </section>
 
@@ -261,6 +288,7 @@ body:not(.jogando) .alerta{display:none}
     <p class="txt">A sua adega está fechada e não vende enquanto você estiver fora. Pode fechar o app tranquilo: tudo fica salvo do jeito que está.</p>
     <p class="txt" id="saiuAviso" hidden style="color:var(--sub)">Tudo salvo! Agora é só fechar esta janela ou o app.</p>
     <button class="btn" id="btnVoltarJogar">Abrir a adega e jogar</button>
+    <button type="button" class="link-btn" id="btnTrocarConta">Entrar com outro apelido</button>
     <button class="btn azul" id="btnFecharApp">Sair do jogo</button>
   </div>
 </section>
@@ -346,7 +374,8 @@ if(S.mesas.n>4){ let dev=0; for(let k=4;k<S.mesas.n;k++) dev+=[2500,6000,15000,4
 if(!S.mesasExtra) S.mesasExtra={}; if(typeof S.tempoJogo!=='number') S.tempoJogo=0;
 IDS.forEach(id=>{const e=S.est[id]; if(e.estoque===undefined){e.estoque=20+2*(e.nivel-1); e.pedido=0;}}); if(S.pedidos===undefined) S.pedidos=0;
 S.caixas=Math.min(S.caixas,2); S.operadores=Math.min(S.operadores,S.caixas);
-function salvar(){S.salvo=Date.now();if(typeof taxaPorMin==='function'){const t=taxaPorMin();if(t>0)S.taxa=t;}try{localStorage.setItem(CHAVE,JSON.stringify(S));}catch(e){}}
+var trocandoConta=false;
+function salvar(){if(trocandoConta)return;S.salvo=Date.now();if(typeof taxaPorMin==='function'){const t=taxaPorMin();if(t>0)S.taxa=t;}try{localStorage.setItem(CHAVE,JSON.stringify(S));}catch(e){}}
 
 const multPrest=()=>1;
 function marcosAte(n){return MARCOS.filter(m=>n>=m).length;}
@@ -1156,13 +1185,24 @@ async function garantirRegistro(){
   registrando=false;
 }
 let ultimoEnvio='';
-async function sincronizar(){
-  if(!rankingAtivo()||!S.perfil||S.falido) return;
+let ultimoSalvo=0;
+async function salvarNuvem(forcar){
+  if(!rankingAtivo()||!S.perfil||!S.perfil.id||trocandoConta) return;
+  const agora=Date.now(); if(!forcar&&agora-ultimoSalvo<30000) return;
+  try{ await rpc('salvar_progresso',{p_id:S.perfil.id,p_token:S.perfil.token,p_estado:S}); ultimoSalvo=agora; }catch(e){}
+}
+async function sincronizar(forcar){
+  if(!rankingAtivo()||!S.perfil) return;
   checarMes();
   if(!S.perfil.id){ await garantirRegistro(); if(!S.perfil.id) return; }
-  const k=Math.floor(S.total)+'|'+S.mes; if(k===ultimoEnvio) return;
-  try{ await rpc('enviar_faturamento',{p_id:S.perfil.id,p_token:S.perfil.token,p_total:Math.floor(S.total),p_mes:S.mes,p_valor_mes:Math.floor(fatMes())}); ultimoEnvio=k; }
-  catch(e){ if(/jogador_invalido/.test(e.message)){ S.perfil.id=null; S.perfil.token=null; salvar(); } }
+  if(!S.falido){
+    const k=Math.floor(S.total)+'|'+S.mes;
+    if(k!==ultimoEnvio){
+      try{ await rpc('enviar_faturamento',{p_id:S.perfil.id,p_token:S.perfil.token,p_total:Math.floor(S.total),p_mes:S.mes,p_valor_mes:Math.floor(fatMes())}); ultimoEnvio=k; }
+      catch(e){ if(/jogador_invalido/.test(e.message)){ S.perfil.id=null; S.perfil.token=null; salvar(); return; } }
+    }
+  }
+  await salvarNuvem(forcar);
 }
 setInterval(sincronizar,45000);
 let abaRk='mes';
@@ -1203,34 +1243,82 @@ function pedirNovoApelido(){
   $('#telaInicio').hidden=true; $('#telaCadastro').hidden=false; document.body.classList.remove('jogando');
   setTimeout(()=>{ $('#cadNome').focus(); $('#cadNome').select(); },50);
 }
-const msgCadastro={apelido_em_uso:'Esse apelido já está em uso no ranking. Escolha outro.',idade_minima:'Desculpe, o jogo da Adega do Edu é exclusivo para maiores de 18 anos.',apelido_invalido:'Use um apelido de 2 a 20 letras.'};
+const msgCadastro={apelido_em_uso:'Esse apelido já está em uso no ranking. Escolha outro.',idade_minima:'Desculpe, o jogo da Adega do Edu é exclusivo para maiores de 18 anos.',apelido_invalido:'Use um apelido de 2 a 20 letras.',senha_invalida_formato:'A senha precisa ter de 4 a 30 caracteres.'};
 $('#btnCadastrar').addEventListener('click',async()=>{
   const btn=$('#btnCadastrar'); if(btn.disabled) return;
-  const nome=$('#cadNome').value.replace(/\s+/g,' ').trim(), idade=parseInt($('#cadIdade').value,10), err=$('#cadErro');
+  const nome=$('#cadNome').value.replace(/\s+/g,' ').trim(), idade=parseInt($('#cadIdade').value,10), senha=$('#cadSenha').value, err=$('#cadErro');
   if(nome.length<2){ err.textContent='Digite um nome ou apelido com pelo menos 2 letras.'; $('#cadNome').focus(); return; }
-  if(!idade||idade<1||idade>120){ err.textContent='Digite a sua idade.'; $('#cadIdade').focus(); return; }
   if((S.apelidosFalidos||[]).includes(nome.toLowerCase())){ err.textContent='Esse apelido faliu e não pode abrir outra adega. Escolha um apelido novo.'; $('#cadNome').focus(); return; }
+  if(!idade||idade<1||idade>120){ err.textContent='Digite a sua idade.'; $('#cadIdade').focus(); return; }
   if(idade<18){ err.textContent=msgCadastro.idade_minima; return; }
+  if(senha.length<4){ err.textContent='Crie uma senha com pelo menos 4 caracteres.'; $('#cadSenha').focus(); return; }
   if(!$('#cadAceite').checked){ err.textContent='Para continuar, aceite a política de privacidade.'; return; }
   let id=null, token=null;
   if(rankingAtivo()){
-    btn.disabled=true; const txt=btn.textContent; btn.textContent='Verificando apelido…'; err.textContent='';
+    btn.disabled=true; const txt=btn.textContent; btn.textContent='Criando cadastro…'; err.textContent='';
     try{
-      const r=await rpc('registrar_jogador',{p_apelido:nome,p_idade:idade}); const l=Array.isArray(r)?r[0]:r;
+      const r=await rpc('registrar_jogador_v2',{p_apelido:nome,p_idade:idade,p_senha:senha}); const l=Array.isArray(r)?r[0]:r;
       if(l&&l.jogador_id){ id=l.jogador_id; token=l.chave; }
     }catch(e){
       const k=Object.keys(msgCadastro).find(c=>e.message.indexOf(c)>=0);
-      if(k){ err.textContent=msgCadastro[k]; btn.disabled=false; btn.textContent=txt; $('#cadNome').focus(); return; }
-      // sem internet: entra no jogo e tenta registrar depois
+      err.textContent=k?msgCadastro[k]:'Sem conexão com a internet. Conecte-se para criar o cadastro.';
+      btn.disabled=false; btn.textContent=txt; return;
     }
     btn.disabled=false; btn.textContent=txt;
   }
-  err.textContent='';
+  err.textContent=''; $('#cadSenha').value='';
   const jaJogava=!!S.perfil;
-  S.perfil={apelido:nome,idade,id,token}; ultimoEnvio=''; checarMes(); salvar();
+  S.perfil={apelido:nome,idade,id,token,temSenha:!!id}; ultimoEnvio=''; checarMes(); salvar();
   $('#telaCadastro').hidden=true; SOM.marco();
   if(S.viuInicio||jaJogava){ document.body.classList.add('jogando'); atualizarHUD(); } else $('#telaInicio').hidden=false;
-  if(id) sincronizar(); else garantirRegistro();
+  if(id) sincronizar(true); else garantirRegistro();
+});
+
+// ---------- Entrar com apelido e senha ----------
+$('#btnIrEntrar').addEventListener('click',()=>{ $('#telaCadastro').hidden=true; $('#logErro').textContent=''; $('#telaLogin').hidden=false; setTimeout(()=>$('#logNome').focus(),50); });
+$('#btnIrCadastro').addEventListener('click',()=>{ $('#telaLogin').hidden=true; $('#telaCadastro').hidden=false; });
+const msgLogin={invalido:'Apelido ou senha incorretos.',bloqueado:'Muitas tentativas erradas. Espere 15 minutos e tente de novo.',sem_senha:'Esse apelido ainda não tem senha. Abra o jogo no aparelho onde ele foi criado e crie uma senha por lá.'};
+$('#btnEntrar').addEventListener('click',async()=>{
+  const btn=$('#btnEntrar'), err=$('#logErro'), nome=$('#logNome').value.trim(), senha=$('#logSenha').value;
+  if(btn.disabled) return;
+  if(!rankingAtivo()){ err.textContent='O login só funciona na versão do jogo com internet (adegadoedu.github.io).'; return; }
+  if(nome.length<2||!senha){ err.textContent='Digite o apelido e a senha.'; return; }
+  btn.disabled=true; const txt=btn.textContent; btn.textContent='Entrando…'; err.textContent='';
+  try{
+    const r=await rpc('entrar',{p_apelido:nome,p_senha:senha}); const l=Array.isArray(r)?r[0]:r;
+    if(!l||l.status!=='ok'){ err.textContent=msgLogin[l&&l.status]||msgLogin.invalido; return; }
+    let novo=(l.estado&&typeof l.estado==='object'&&l.estado.est)?l.estado:estadoNovo();
+    novo.perfil={apelido:l.apelido,idade:l.idade,id:l.jogador_id,token:l.chave,temSenha:true};
+    novo.viuInicio=true; novo.saiu=false; novo.salvo=Date.now();
+    if(l.falido){ novo.falido=true; novo.falidoApelido=l.apelido; }
+    trocandoConta=true;
+    localStorage.setItem(CHAVE,JSON.stringify(novo));
+    location.reload();
+  }catch(e){ err.textContent='Sem conexão com a internet. Tente de novo.'; }
+  finally{ btn.disabled=false; btn.textContent=txt; $('#logSenha').value=''; }
+});
+$('#logSenha').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#btnEntrar').click(); });
+
+// ---------- Criar senha (para quem já tinha apelido) ----------
+function pedirSenhaSeNecessario(){
+  if(!rankingAtivo()||!S.perfil||!S.perfil.id||S.perfil.temSenha||S.falido) return;
+  $('#senhaNome').textContent=S.perfil.apelido; $('#senhaErro').textContent=''; $('#telaSenha').hidden=false;
+}
+$('#btnSenhaDepois').addEventListener('click',()=>{ $('#telaSenha').hidden=true; });
+$('#btnSalvarSenha').addEventListener('click',async()=>{
+  const btn=$('#btnSalvarSenha'), err=$('#senhaErro'), senha=$('#novaSenha').value;
+  if(senha.length<4){ err.textContent='A senha precisa ter pelo menos 4 caracteres.'; return; }
+  btn.disabled=true; err.textContent='';
+  try{ await rpc('definir_senha',{p_id:S.perfil.id,p_token:S.perfil.token,p_senha:senha}); S.perfil.temSenha=true; salvar(); sincronizar(true); $('#novaSenha').value=''; $('#telaSenha').hidden=true; SOM.marco(); }
+  catch(e){ err.textContent='Não foi possível salvar a senha agora. Confira a internet.'; }
+  finally{ btn.disabled=false; }
+});
+
+// ---------- Trocar de jogador ----------
+$('#btnTrocarConta').addEventListener('click',async()=>{
+  try{ await sincronizar(true); }catch(e){}
+  trocandoConta=true; try{ localStorage.removeItem(CHAVE); }catch(e){}
+  location.reload();
 });
 
 // Alerta de estoque acabando (quando ainda não há reposição automática)
@@ -1382,7 +1470,7 @@ $('#btnSair').addEventListener('click',()=>{ SOM.abrir(); fecharPainel(); $('#te
 $('#btnSairNao').addEventListener('click',()=>{ $('#telaSairConfirma').hidden=true; });
 $('#btnSairSim').addEventListener('click',async()=>{
   S.saiu=true; salvar(); mostrarSaiu();
-  try{ await sincronizar(); }catch(e){}
+  try{ await sincronizar(true); }catch(e){}
 });
 $('#btnFecharApp').addEventListener('click',()=>{
   salvar();
@@ -1709,7 +1797,7 @@ if(S.mes===undefined){ S.mes=mesAtual(); S.totalInicioMes=S.total; }
 if(S.falido){ $('#telaInicio').hidden=true; mostrarFalencia(); reenviarFalencia(); }
 else if(!S.perfil){ mostrarCadastro(); }
 else if(S.saiu){ $('#telaInicio').hidden=true; mostrarSaiu(); }
-else if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); sincronizar(); }
+else if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); sincronizar(); setTimeout(pedirSenhaSeNecessario,1200); }
 laco();
 })();
 </script>
