@@ -145,7 +145,17 @@ body:not(.jogando) .cobrar{display:none !important}
 .lista-cp .c{font-weight:900;letter-spacing:.04em;user-select:text;-webkit-user-select:text}
 .lista-cp .st{grid-column:1/-1;color:var(--sub);font-weight:700;font-size:.82rem}
 .lista-cp li.off{opacity:.6}
-#btnRanking,#btnSair{font-size:1.15rem;padding:4px 10px;cursor:pointer}
+#prevPersonagem{display:block;margin:4px auto 0;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#FFF3C4 0%,#FFD86B 70%,#F2A516 100%);border:4px solid var(--contorno)}
+.opc-linha{margin-top:10px}
+.opc-linha>span{display:block;font-weight:900;font-size:.85rem;margin-bottom:5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:3px solid var(--contorno);border-radius:12px;padding:6px 10px;background:var(--painel2);color:var(--texto);font-weight:900;font-size:.85rem;min-height:40px}
+.chip.ativo{background:#FFC93C;color:#2A1A12}
+.cor{width:36px;height:36px;border-radius:50%;border:3px solid #2A1A12;padding:0}
+.cor.ativo{outline:4px solid #2F8FD8;outline-offset:2px}
+.acoes-pers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lista-rk .rosto{width:30px;height:30px;border-radius:50%;border:2px solid #2A1A12;background:#FFE7A0;vertical-align:middle;margin-right:6px;object-fit:cover}
+#btnRanking,#btnPersonagem,#btnSair{font-size:1.15rem;padding:4px 10px;cursor:pointer}
 .abas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .aba{border:3px solid var(--contorno);border-radius:12px;background:var(--painel2);padding:8px;font-weight:900}
 .aba.ativa{background:var(--amarelo);color:#2A1A12}
@@ -175,6 +185,7 @@ body:not(.jogando) .alerta{display:none}
 <header class="hud">
   <div class="linha-hud">
     <button class="pilula" id="btnRanking" aria-label="Ver ranking">🏆</button>
+    <button class="pilula" id="btnPersonagem" aria-label="Meu personagem">👤</button>
     <div class="pilula" id="dinheiro" role="button" tabindex="0" aria-label="Trocar dinheiro por cupom de desconto"><span id="icDin"></span><span id="valDin">0</span><span class="tk" aria-hidden="true">🎟️</span></div>
     <div class="pilula" id="taxa">0/min</div>
     <button class="pilula" id="btnSair" aria-label="Sair do jogo">🚪</button>
@@ -223,6 +234,22 @@ body:not(.jogando) .alerta{display:none}
     <p class="erro" id="senhaErro" role="alert"></p>
     <button class="btn" id="btnSalvarSenha">Salvar senha</button>
     <button type="button" class="link-btn" id="btnSenhaDepois">Agora não</button>
+  </div>
+</section>
+
+<section class="tela" id="telaPersonagem" hidden>
+  <div class="caixa">
+    <h2 class="titulo centro" style="font-size:1.9rem">Monte o seu personagem</h2>
+    <p class="txt centro" id="persTexto" style="font-size:.9rem;color:var(--sub);margin:4px 0">Ele vai trabalhar no caixa da sua adega e aparecer no ranking.</p>
+    <canvas id="prevPersonagem" width="360" height="360" aria-label="Prévia do personagem"></canvas>
+    <div id="opcoesPersonagem"></div>
+    <p class="erro" id="persErro" role="alert"></p>
+    <div class="acoes-pers">
+      <button class="btn azul peq" id="btnPersAleatorio" type="button">🎲 Sortear</button>
+      <button class="btn peq" id="btnPersSalvar" type="button">Salvar</button>
+    </div>
+    <button class="btn amarelo peq" id="btnCartao" type="button">📤 Compartilhar meu cartão</button>
+    <button type="button" class="link-btn" id="btnPersFechar">Fechar</button>
   </div>
 </section>
 
@@ -819,9 +846,55 @@ function pessoa(opc){
   g.userData={corpo,pE,pD,sacola};
   return g;
 }
+// ---------- Personagem configurável do jogador ----------
+const PELES_V=[0xF6D0B1,0xE6B08A,0xC68B63,0x9A6542,0x6E452C];
+const CORES_CABELO_V=[0x2A1A12,0x4A2B17,0x7A4A22,0xD9A441,0xB8B0A4,0xE8433A,0x2F8FD8,0x9B5DE5];
+const CORES_ROUPA_V=[0xE8433A,0xFF7A2F,0xFFC93C,0x3CB371,0x1F4D3A,0x2F8FD8,0x2A3A55,0x9B5DE5,0xF06292,0xF5F5F5];
+const CORES_CALCA_V=[0x34445A,0x1A1A1A,0x5B4636,0x8A8F96,0x2D5A8C];
+const ESTILOS_CABELO=[['curto','Curto'],['coque','Coque'],['cacheado','Cacheado'],['careca','Careca'],['bone','Boné']];
+const ESTILOS_ROUPA=[['moletom','Moletom'],['camisa','Camisa e gravata'],['polo','Polo']];
+const DETALHES_V=[['nenhum','Nenhum'],['oculos','Óculos'],['barba','Barba']];
+const VISUAL_PADRAO={pele:1,cabelo:'bone',corCabelo:4,roupa:'moletom',corRoupa:1,corCalca:0,detalhe:'nenhum'};
+function normalizarVisual(v){
+  v=Object.assign({},VISUAL_PADRAO,v||{});
+  const lim=(x,n)=>Number.isInteger(x)&&x>=0&&x<n?x:0;
+  return {pele:lim(v.pele,5),cabelo:ESTILOS_CABELO.some(e=>e[0]===v.cabelo)?v.cabelo:'curto',corCabelo:lim(v.corCabelo,8),
+    roupa:ESTILOS_ROUPA.some(e=>e[0]===v.roupa)?v.roupa:'moletom',corRoupa:lim(v.corRoupa,10),corCalca:lim(v.corCalca,5),
+    detalhe:DETALHES_V.some(e=>e[0]===v.detalhe)?v.detalhe:'nenhum'};
+}
+const corCabeloV=v=>v.cabelo==='bone'?CORES_ROUPA_V[v.corCabelo]:CORES_CABELO_V[v.corCabelo];
+function pessoaV(vis){
+  const v=normalizarVisual(vis);
+  const g=new THREE.Group(), corpo=new THREE.Group(); g.add(corpo);
+  const corR=CORES_ROUPA_V[v.corRoupa], camisa=toon(corR), pele=toon(PELES_V[v.pele]), calca=toon(CORES_CALCA_V[v.corCalca]), cab=toon(corCabeloV(v));
+  const escuro=toon(new THREE.Color(corR).multiplyScalar(0.8).getHex());
+  const pE=malha(geoPerna,calca,corpo,-0.09,0.23,0), pD=malha(geoPerna,calca,corpo,0.09,0.23,0);
+  const tronco=malha(ESF,camisa,corpo,0,0.72,0); tronco.scale.set(0.26,0.32,0.21); contorno(tronco,0.025);
+  const bE=malha(ESF,camisa,corpo,-0.27,0.7,0); bE.scale.set(0.075,0.18,0.075); contorno(bE,0.02);
+  const bD=malha(ESF,camisa,corpo,0.27,0.7,0); bD.scale.set(0.075,0.18,0.075); contorno(bD,0.02);
+  const cabeca=malha(ESF,pele,corpo,0,1.22,0); cabeca.scale.setScalar(0.24); contorno(cabeca,0.025);
+  if(v.roupa==='moletom'){ bloco(0.22,0.09,0.03,escuro,corpo,0,0.62,0.2); const cap=malha(new THREE.TorusGeometry(0.13,0.035,8,20),escuro,corpo,0,0.98,-0.03); cap.rotation.x=Math.PI/2.4; }
+  if(v.roupa==='camisa'){ bloco(0.07,0.25,0.03,toon(0xE8433A),corpo,0,0.78,0.21); [-1,1].forEach(l=>{const c=bloco(0.09,0.05,0.03,toon(0xF5F5F5),corpo,l*0.05,0.95,0.17); c.rotation.z=l*0.5;}); }
+  if(v.roupa==='polo'){ [-1,1].forEach(l=>{const c=bloco(0.1,0.05,0.03,escuro,corpo,l*0.055,0.95,0.17); c.rotation.z=l*0.45;}); bloco(0.035,0.1,0.02,escuro,corpo,0,0.88,0.205); }
+  if(v.cabelo==='curto'||v.cabelo==='coque'){ const h=malha(ESF,cab,corpo,0,1.3,-0.03); h.scale.set(0.25,0.17,0.25); contorno(h,0.02); }
+  if(v.cabelo==='coque'){ const k=malha(ESF,cab,corpo,0,1.47,-0.06); k.scale.setScalar(0.1); contorno(k,0.02); }
+  if(v.cabelo==='cacheado'){ const t=malha(ESF,cab,corpo,0,1.32,-0.03); t.scale.set(0.24,0.15,0.23); for(let i=0;i<9;i++){const a=-Math.PI*0.95+i*(Math.PI*1.9/8); const c=malha(ESF,cab,corpo,Math.sin(a)*0.2,1.34+Math.cos(a)*0.08,-0.04-Math.abs(Math.cos(a))*0.05); c.scale.setScalar(0.085);} }
+  if(v.cabelo==='careca'){ [-1,1].forEach(l=>{const c=malha(ESF,cab,corpo,l*0.22,1.22,-0.05); c.scale.set(0.05,0.08,0.1);}); }
+  if(v.cabelo==='bone'){ const b=malha(ESF,cab,corpo,0,1.3,0); b.scale.set(0.25,0.15,0.25); contorno(b,0.02); bloco(0.3,0.03,0.18,cab,corpo,0,1.3,0.22); }
+  [-0.08,0.08].forEach(x=>{const o=malha(geoOlho,matOlho,corpo,x,1.24,0.215,false);o.scale.set(0.03,0.04,0.02);});
+  if(v.detalhe==='oculos'){ const mo=toon(0x1A1A1A); [-0.08,0.08].forEach(x=>malha(new THREE.TorusGeometry(0.05,0.012,8,20),mo,corpo,x,1.24,0.225,false)); bloco(0.06,0.012,0.012,mo,corpo,0,1.25,0.23); }
+  if(v.detalhe==='barba'){ const bb=malha(ESF,toon(v.cabelo==='bone'?0x2A1A12:corCabeloV(v)),corpo,0,1.11,0.1); bb.scale.set(0.19,0.11,0.14); contorno(bb,0.015); }
+  const sacola=new THREE.Group(); sacola.position.set(0.3,0.42,0.06); corpo.add(sacola);
+  contorno(malha(geoArred(0.22,0.24,0.14,0.03),toon(0xFFFFFF),sacola,0,0,0),0.015);
+  malha(new THREE.BoxGeometry(0.1,0.1,0.15),toon(0x1F4D3A),sacola,0,0,0,false);
+  sacola.visible=false;
+  g.userData={corpo,pE,pD,sacola};
+  return g;
+}
+
 // Funcionários fixos
 const atendentes=[-0.7,0.7].map(x=>{const p=pessoa({camisa:0x1F4D3A,bone:0xFFC93C});p.position.set(CX.x+x,0,CX.z-0.85);scene.add(p);p.visible=false;return p;});
-const edus=[-0.7,0.7].map(x=>{const p=pessoa({camisa:0xFF7A2F,bone:0x1F4D3A,gravata:false});p.position.set(CX.x+x,0,CX.z-0.85);scene.add(p);p.visible=false;return p;});
+let edus=[-0.7,0.7].map(x=>{const p=pessoaV(VISUAL_PADRAO);p.position.set(CX.x+x,0,CX.z-0.85);scene.add(p);p.visible=false;return p;});
 const garcom=pessoa({camisa:0xF5F5F5,gravata:true}); garcom.position.set(-1.6,0,Z_CORREDOR); garcom.rotation.y=-Math.PI/2; scene.add(garcom); garcom.visible=false;
 const gerente=pessoa({camisa:0x2A3A55,gravata:true}); gerente.position.set(pilhaG.position.x,0,pilhaG.position.z-1.0); scene.add(gerente); gerente.visible=false;
 
@@ -1209,10 +1282,11 @@ async function sincronizar(forcar){
 }
 setInterval(sincronizar,45000);
 let abaRk='mes';
-function linhaRk(pos,nome,valor,eu,falido){
+function linhaRk(pos,nome,valor,eu,falido,visual){
   const li=document.createElement('li'); li.className=(eu?'eu ':'')+(falido?'falido':'');
   const p=document.createElement('span'); p.className='pos'; p.textContent=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':pos+'º';
   const n=document.createElement('span'); n.className='nome'; n.textContent=(falido?'📉 ':'')+nome+(eu?' (você)':''); if(falido) li.title=nome+' faliu';
+  if(visual){ const u=rostoURL(visual); if(u){ const im=document.createElement('img'); im.className='rosto'; im.alt=''; im.src=u; n.prepend(im); } }
   const v=document.createElement('span'); v.className='val'; v.innerHTML=NOTA; v.appendChild(document.createTextNode(' '+fmt(valor)));
   li.append(p,n,v); return li;
 }
@@ -1223,14 +1297,14 @@ async function abrirRanking(aba){
   $('#rkEu').innerHTML='Você '+NOTA+' '+fmt(meu);
   const lista=$('#listaRanking'), info=$('#rkInfo'); lista.innerHTML=''; info.textContent='';
   $('#telaRanking').hidden=false;
-  if(!rankingAtivo()){ lista.appendChild(linhaRk(1,S.perfil?S.perfil.apelido:'Você',meu,true)); info.textContent='O ranking online ainda não foi ligado pela Adega do Edu. Por enquanto, aparece só o seu faturamento.'; return; }
+  if(!rankingAtivo()){ lista.appendChild(linhaRk(1,S.perfil?S.perfil.apelido:'Você',meu,true,false,S.perfil&&S.perfil.visual)); info.textContent='O ranking online ainda não foi ligado pela Adega do Edu. Por enquanto, aparece só o seu faturamento.'; return; }
   info.textContent='Carregando…';
   try{
     await sincronizar();
     const rows=await rpc('ver_ranking',{p_mes:abaRk==='mes'?mesAtual():null,p_id:S.perfil&&S.perfil.id?S.perfil.id:null})||[];
     info.textContent=rows.length?(abaRk==='mes'?'O ranking do mês recomeça no dia 1º.':'Faturamento total desde o início do jogo.'):'Ninguém pontuou ainda. Seja o primeiro!';
     let ant=0;
-    rows.forEach(r=>{ if(r.posicao>ant+1&&ant>=50){ const sep=document.createElement('li'); sep.className='sep'; sep.textContent='⋯'; lista.appendChild(sep); } lista.appendChild(linhaRk(r.posicao,r.apelido,r.valor,r.eu,r.falido)); ant=r.posicao; });
+    rows.forEach(r=>{ if(r.posicao>ant+1&&ant>=50){ const sep=document.createElement('li'); sep.className='sep'; sep.textContent='⋯'; lista.appendChild(sep); } lista.appendChild(linhaRk(r.posicao,r.apelido,r.valor,r.eu,r.falido,r.visual||(r.eu&&S.perfil?S.perfil.visual:null))); ant=r.posicao; });
   }catch(e){ info.textContent='Não foi possível carregar o ranking agora. Confira a internet e tente de novo.'; }
 }
 $('#btnRanking').addEventListener('click',()=>{SOM.abrir();abrirRanking();});
@@ -1273,7 +1347,8 @@ $('#btnCadastrar').addEventListener('click',async()=>{
   const jaJogava=!!S.perfil;
   S.perfil={apelido:nome,idade,id,token,temSenha:!!id}; ultimoEnvio=''; checarMes(); salvar();
   $('#telaCadastro').hidden=true; SOM.marco();
-  if(S.viuInicio||jaJogava){ document.body.classList.add('jogando'); atualizarHUD(); } else $('#telaInicio').hidden=false;
+  const seguir=()=>{ if(S.viuInicio||jaJogava){ document.body.classList.add('jogando'); atualizarHUD(); } else $('#telaInicio').hidden=false; };
+  abrirPersonagem({primeiraVez:true,depois:seguir});
   if(id) sincronizar(true); else garantirRegistro();
 });
 
@@ -1291,7 +1366,7 @@ $('#btnEntrar').addEventListener('click',async()=>{
     const r=await rpc('entrar',{p_apelido:nome,p_senha:senha}); const l=Array.isArray(r)?r[0]:r;
     if(!l||l.status!=='ok'){ err.textContent=msgLogin[l&&l.status]||msgLogin.invalido; return; }
     let novo=(l.estado&&typeof l.estado==='object'&&l.estado.est)?l.estado:estadoNovo();
-    novo.perfil={apelido:l.apelido,idade:l.idade,id:l.jogador_id,token:l.chave,temSenha:true};
+    novo.perfil={apelido:l.apelido,idade:l.idade,id:l.jogador_id,token:l.chave,temSenha:true,visual:(l.estado&&l.estado.perfil&&l.estado.perfil.visual)||null};
     novo.viuInicio=true; novo.saiu=false; novo.salvo=Date.now();
     if(l.falido){ novo.falido=true; novo.falidoApelido=l.apelido; }
     trocandoConta=true;
@@ -1483,6 +1558,111 @@ $('#btnConclusao').addEventListener('click',async()=>{
     err.textContent=k?msgConclusao[k]:'Não foi possível gerar o cupom agora. Confira a internet e tente de novo.';
     btn.disabled=false; btn.textContent=txt;
   }
+});
+
+// ================= Meu personagem =================
+function aplicarVisualJogador(){
+  const v=(S&&S.perfil&&S.perfil.visual)||VISUAL_PADRAO;
+  edus=edus.map(old=>{ if(G.estado!=='livre'&&G.g===old) return old;
+    const p=pessoaV(v); p.position.copy(old.position); p.rotation.copy(old.rotation); p.visible=old.visible; scene.remove(old); scene.add(p); return p; });
+}
+let rendPrev=null, cenaPrev=null, figPrev=null, animPrev=0, visEdit=null, aoFecharPers=null;
+function prepararCenaPrev(){
+  if(rendPrev) return;
+  rendPrev=new THREE.WebGLRenderer({canvas:$('#prevPersonagem'),antialias:true,alpha:true});
+  rendPrev.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); rendPrev.setSize(180,180,false);
+  cenaPrev=new THREE.Scene(); cenaPrev.add(new THREE.HemisphereLight(0xFFF6E8,0x7A6A5A,0.8)); cenaPrev.add(new THREE.AmbientLight(0xffffff,0.25));
+  const l=new THREE.DirectionalLight(0xFFF2DD,0.7); l.position.set(2,4,5); cenaPrev.add(l);
+}
+const camPrev=new THREE.PerspectiveCamera(30,1,0.1,20); camPrev.position.set(0,1.0,3.6); camPrev.lookAt(0,0.75,0);
+function atualizarPrevia(){ if(figPrev) cenaPrev.remove(figPrev); figPrev=pessoaV(visEdit); cenaPrev.add(figPrev); }
+function loopPrev(){ if($('#telaPersonagem').hidden){ animPrev=0; return; } if(figPrev) figPrev.rotation.y+=0.02; rendPrev.render(cenaPrev,camPrev); animPrev=requestAnimationFrame(loopPrev); }
+function botaoOpcao(rotulo,ativo,fn,cor){
+  const b=document.createElement('button'); b.type='button';
+  if(cor!==undefined){ b.className='cor'+(ativo?' ativo':''); b.style.background='#'+cor.toString(16).padStart(6,'0'); b.setAttribute('aria-label',rotulo); }
+  else { b.className='chip'+(ativo?' ativo':''); b.textContent=rotulo; }
+  b.setAttribute('aria-pressed',ativo?'true':'false'); b.addEventListener('click',()=>{ fn(); SOM.abrir(); renderOpcoesPers(); atualizarPrevia(); }); return b;
+}
+function linhaOpcao(titulo,botoes){ const d=document.createElement('div'); d.className='opc-linha'; const t=document.createElement('span'); t.textContent=titulo; const c=document.createElement('div'); c.className='chips'; botoes.forEach(b=>c.appendChild(b)); d.append(t,c); return d; }
+function renderOpcoesPers(){
+  const v=visEdit, box=$('#opcoesPersonagem'); box.innerHTML='';
+  box.appendChild(linhaOpcao('Tom de pele',PELES_V.map((c,i)=>botaoOpcao('Tom '+(i+1),v.pele===i,()=>v.pele=i,c))));
+  box.appendChild(linhaOpcao('Cabelo',ESTILOS_CABELO.map(e=>botaoOpcao(e[1],v.cabelo===e[0],()=>v.cabelo=e[0]))));
+  if(v.cabelo!=='careca'||true){ const pal=v.cabelo==='bone'?CORES_ROUPA_V.slice(0,8):CORES_CABELO_V;
+    box.appendChild(linhaOpcao(v.cabelo==='bone'?'Cor do boné':'Cor do cabelo',pal.map((c,i)=>botaoOpcao('Cor '+(i+1),v.corCabelo===i,()=>v.corCabelo=i,c)))); }
+  box.appendChild(linhaOpcao('Roupa',ESTILOS_ROUPA.map(e=>botaoOpcao(e[1],v.roupa===e[0],()=>v.roupa=e[0]))));
+  box.appendChild(linhaOpcao('Cor da roupa',CORES_ROUPA_V.map((c,i)=>botaoOpcao('Cor '+(i+1),v.corRoupa===i,()=>v.corRoupa=i,c))));
+  box.appendChild(linhaOpcao('Calça',CORES_CALCA_V.map((c,i)=>botaoOpcao('Calça '+(i+1),v.corCalca===i,()=>v.corCalca=i,c))));
+  box.appendChild(linhaOpcao('Detalhe',DETALHES_V.map(e=>botaoOpcao(e[1],v.detalhe===e[0],()=>v.detalhe=e[0]))));
+}
+function abrirPersonagem(op){
+  op=op||{}; aoFecharPers=op.depois||null;
+  visEdit=normalizarVisual(S.perfil&&S.perfil.visual);
+  $('#persTexto').textContent=op.primeiraVez?'Ele vai trabalhar no caixa da sua adega e aparecer no ranking. Dá para mudar depois no botão 👤.':'Ele trabalha no caixa da sua adega e aparece no ranking.';
+  $('#btnPersFechar').style.display=op.primeiraVez?'none':''; $('#btnCartao').style.display=op.primeiraVez?'none':'';
+  $('#persErro').textContent='';
+  prepararCenaPrev(); renderOpcoesPers(); atualizarPrevia();
+  $('#telaPersonagem').hidden=false; if(!animPrev) loopPrev();
+}
+function fecharPersonagem(){ $('#telaPersonagem').hidden=true; const f=aoFecharPers; aoFecharPers=null; if(f) f(); }
+$('#btnPersonagem').addEventListener('click',()=>{ SOM.abrir(); abrirPersonagem(); });
+$('#btnPersFechar').addEventListener('click',fecharPersonagem);
+$('#btnPersAleatorio').addEventListener('click',()=>{
+  const r=n=>Math.floor(Math.random()*n);
+  visEdit={pele:r(5),cabelo:ESTILOS_CABELO[r(5)][0],corCabelo:r(8),roupa:ESTILOS_ROUPA[r(3)][0],corRoupa:r(10),corCalca:r(5),detalhe:DETALHES_V[r(3)][0]};
+  SOM.abrir(); renderOpcoesPers(); atualizarPrevia();
+});
+$('#btnPersSalvar').addEventListener('click',async()=>{
+  if(!S.perfil) return;
+  S.perfil.visual=normalizarVisual(visEdit); salvar(); aplicarVisualJogador(); SOM.marco();
+  if(rankingAtivo()&&S.perfil.id){ try{ await rpc('salvar_visual',{p_id:S.perfil.id,p_token:S.perfil.token,p_visual:S.perfil.visual}); }catch(e){} salvarNuvem(true); }
+  fecharPersonagem();
+});
+// Rostinho do personagem para o ranking
+let rendRosto=null; const cenaRosto=new THREE.Scene(), cacheRosto={};
+cenaRosto.add(new THREE.HemisphereLight(0xFFF6E8,0x7A6A5A,0.85)); cenaRosto.add(new THREE.AmbientLight(0xffffff,0.25));
+(function(){ const l=new THREE.DirectionalLight(0xFFF2DD,0.6); l.position.set(1,2,4); cenaRosto.add(l); })();
+const camRosto=new THREE.PerspectiveCamera(30,1,0.1,10); camRosto.position.set(0,1.27,1.25); camRosto.lookAt(0,1.24,0);
+function rostoURL(vis){
+  const v=normalizarVisual(vis), k=JSON.stringify(v); if(cacheRosto[k]) return cacheRosto[k];
+  try{
+    if(!rendRosto){ const c=document.createElement('canvas'); c.width=c.height=96; rendRosto=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,preserveDrawingBuffer:true}); rendRosto.setSize(96,96,false); }
+    const f=pessoaV(v); cenaRosto.add(f); rendRosto.render(cenaRosto,camRosto); cenaRosto.remove(f);
+    cacheRosto[k]=rendRosto.domElement.toDataURL('image/png'); return cacheRosto[k];
+  }catch(e){ return ''; }
+}
+// Cartão para compartilhar
+let rendCartao=null; const cenaCartao=new THREE.Scene();
+cenaCartao.add(new THREE.HemisphereLight(0xFFF6E8,0x7A6A5A,0.75)); cenaCartao.add(new THREE.AmbientLight(0xffffff,0.22));
+(function(){ const l=new THREE.DirectionalLight(0xFFF2DD,0.75); l.position.set(2,4,5); cenaCartao.add(l); })();
+const camCartao=new THREE.PerspectiveCamera(28,1,0.1,20); camCartao.position.set(0,0.95,3.6); camCartao.lookAt(0,0.68,0);
+async function gerarCartao(){
+  const v=normalizarVisual(S.perfil&&S.perfil.visual);
+  if(!rendCartao){ const c=document.createElement('canvas'); c.width=c.height=760; rendCartao=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,preserveDrawingBuffer:true}); rendCartao.setSize(760,760,false); }
+  const f=pessoaV(v); f.rotation.y=-0.25; cenaCartao.add(f); rendCartao.render(cenaCartao,camCartao); cenaCartao.remove(f);
+  const logoImg=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=LOGO_ADEGA;});
+  const c=document.createElement('canvas'); c.width=c.height=1080; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(540,470,40,540,470,760); gr.addColorStop(0,'#FFF3C4'); gr.addColorStop(0.55,'#FFD86B'); gr.addColorStop(1,'#F2A516'); g.fillStyle=gr; g.fillRect(0,0,1080,1080);
+  g.fillStyle='rgba(42,26,18,.18)'; g.beginPath(); g.ellipse(540,838,210,40,0,0,Math.PI*2); g.fill();
+  g.drawImage(rendCartao.domElement,200,220,680,680);
+  const titulo=(t,x,y,tam)=>{ g.font=tam+"px 'Lilita One', 'Arial Black', sans-serif"; g.textAlign='center'; g.lineJoin='round'; g.lineWidth=tam/7; g.strokeStyle='#2A1A12'; g.fillStyle='#2A1A12'; g.fillText(t,x,y+tam/12); g.strokeText(t,x,y); g.fillStyle='#FFC93C'; g.fillText(t,x,y); };
+  titulo('Minha adega',540,118,96);
+  g.font="900 46px Nunito, sans-serif"; g.textAlign='center'; g.fillStyle='#2A1A12'; g.fillText(S.perfil.apelido,540,190);
+  g.fillStyle='#1F4D3A'; g.strokeStyle='#2A1A12'; g.lineWidth=8; const bx=230,by=880,bw=820,bh=160;
+  g.beginPath(); g.roundRect?g.roundRect(bx,by,bw,bh,28):g.rect(bx,by,bw,bh); g.fill(); g.stroke();
+  g.fillStyle='#fff'; g.textAlign='left'; g.font="900 40px Nunito, sans-serif"; g.fillText('Faturamento: '+fmt(S.total),bx+36,by+66);
+  g.font="900 32px Nunito, sans-serif"; g.fillStyle='#FFC93C'; g.fillText('Jogue também: adegadoedu.github.io',bx+36,by+118);
+  if(logoImg){ g.save(); g.beginPath(); g.arc(130,960,100,0,Math.PI*2); g.clip(); g.drawImage(logoImg,30,860,200,200); g.restore(); }
+  return await new Promise(r=>c.toBlob(r,'image/png'));
+}
+$('#btnCartao').addEventListener('click',async()=>{
+  const b=$('#btnCartao'); if(b.disabled) return; b.disabled=true;
+  try{
+    const blob=await gerarCartao(); const arq=new File([blob],'minha-adega-do-edu.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[arq]})){ await navigator.share({files:[arq],title:'Minha adega',text:'Olha a minha adega no Adega do Edu Tycoon! Jogue também: https://adegadoedu.github.io'}); }
+    else { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='minha-adega-do-edu.png'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000); }
+  }catch(e){ if(!(e&&e.name==='AbortError')) $('#persErro').textContent='Não foi possível gerar o cartão agora.'; }
+  finally{ b.disabled=false; }
 });
 
 // ================= Sair do jogo =================
@@ -1822,7 +2002,8 @@ if(S.mes===undefined){ S.mes=mesAtual(); S.totalInicioMes=S.total; }
 if(S.falido){ $('#telaInicio').hidden=true; mostrarFalencia(); reenviarFalencia(); }
 else if(!S.perfil){ mostrarCadastro(); }
 else if(S.saiu){ $('#telaInicio').hidden=true; mostrarSaiu(); }
-else if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); sincronizar(); setTimeout(pedirSenhaSeNecessario,1200); }
+else if(S.viuInicio){ $('#telaInicio').hidden=true; if(!verificarOffline()) document.body.classList.add('jogando'); sincronizar(); setTimeout(()=>{ if(S.perfil&&!S.perfil.visual&&!S.falido) abrirPersonagem({primeiraVez:true,depois:pedirSenhaSeNecessario}); else pedirSenhaSeNecessario(); },1200); }
+aplicarVisualJogador();
 laco();
 })();
 </script>
