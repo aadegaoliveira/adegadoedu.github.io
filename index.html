@@ -308,7 +308,10 @@ body:not(.jogando) .alerta{display:none}
   <div class="caixa centro">
     <h2 class="titulo" style="font-size:2rem">Adega completa!</h2>
     <p class="txt">Você cumpriu todas as tarefas da Adega do Edu. A loja continua funcionando: siga melhorando os setores, mantendo o estoque cheio e batendo recordes de faturamento.</p>
-    <div class="cupom"><b>Na versão final:</b> completar todas as tarefas libera um cupom de verdade para usar em produtos não alcoólicos da Adega do Edu.</div>
+    <div class="cupom"><b>🎁 Cupom de conclusão:</b> por ter completado todas as tarefas, você pode pegar um cupom de até R$ 5,00 por mês, em produtos não alcoólicos da Adega do Edu. Ele conta dentro do limite de R$ 10,00 por mês.</div>
+    <button class="btn amarelo" id="btnConclusao">Pegar meu cupom de conclusão</button>
+    <p class="erro" id="conclErro" role="alert"></p>
+    <div id="conclNovo"></div>
     <button class="btn" id="btnFicar">Continuar</button>
   </div>
 </section>
@@ -1413,7 +1416,7 @@ function renderListaCupons(rows){
     const li=document.createElement('li'), c=document.createElement('span'), v=document.createElement('b'), st=document.createElement('span');
     const usado=!!r.usado_em, venc=!usado&&new Date(r.expira_em)<new Date();
     c.className='c'; c.textContent=r.codigo; v.textContent=reais(r.valor_centavos); st.className='st';
-    st.textContent=usado?'✔ Usado em '+dataBR(r.usado_em):venc?'Expirado em '+dataBR(r.expira_em):'Válido até '+dataBR(r.expira_em);
+    st.textContent=(r.tipo==='conclusao'?'🎁 Conclusão · ':'')+(usado?'✔ Usado em '+dataBR(r.usado_em):venc?'Expirado em '+dataBR(r.expira_em):'Válido até '+dataBR(r.expira_em));
     if(usado||venc) li.className='off';
     li.append(c,v,st); ul.appendChild(li);
   });
@@ -1457,6 +1460,28 @@ $('#cpGerar').addEventListener('click',async()=>{
     const k=Object.keys(msgCupom).find(c=>e.message.indexOf(c)>=0);
     err.textContent=k?msgCupom[k]:'Não foi possível gerar o cupom agora. Confira a internet e tente de novo.';
     renderCupom();
+  }
+});
+
+// ---------- Cupom de conclusão (todas as tarefas) ----------
+const msgConclusao={conclusao_incompleta:'O seu faturamento registrado ainda não chegou a 150 mil. Jogue mais um pouco e tente de novo.',conclusao_ja_pega:'Você já pegou o cupom de conclusão deste mês. Volte no mês que vem!',limite_mensal:'Você já usou o limite de R$ 10,00 em cupons este mês. Volte no mês que vem!',jogador_falido:'Essa adega faliu e não pode gerar cupons.'};
+$('#btnConclusao').addEventListener('click',async()=>{
+  const btn=$('#btnConclusao'), err=$('#conclErro'); if(btn.disabled) return;
+  if(!rankingAtivo()||!S.perfil||!S.perfil.id){ err.textContent='Para pegar o cupom, o jogo precisa estar conectado à internet com o seu cadastro.'; return; }
+  btn.disabled=true; const txt=btn.textContent; btn.textContent='Gerando cupom…'; err.textContent='';
+  try{
+    ultimoEnvio=''; await sincronizar(true);
+    const r=await rpc('gerar_cupom_conclusao',{p_id:S.perfil.id,p_token:S.perfil.token}); const l=Array.isArray(r)?r[0]:r;
+    const box=document.createElement('div'); box.className='cupom-novo';
+    const t1=document.createElement('div'); t1.textContent='🎁 Seu cupom de conclusão de '+reais(l.cupom_centavos)+':';
+    const cod=document.createElement('div'); cod.className='cod'; cod.textContent=l.cupom_codigo;
+    const t2=document.createElement('div'); t2.textContent='Mostre este código no balcão da Adega do Edu. Válido até '+dataBR(l.cupom_expira)+'. Ele também fica na lista de cupons do 🎟️.';
+    box.append(t1,cod,t2); $('#conclNovo').innerHTML=''; $('#conclNovo').appendChild(box);
+    btn.textContent='Cupom deste mês já pego'; SOM.marco();
+  }catch(e){
+    const k=Object.keys(msgConclusao).find(c=>e.message.indexOf(c)>=0);
+    err.textContent=k?msgConclusao[k]:'Não foi possível gerar o cupom agora. Confira a internet e tente de novo.';
+    btn.disabled=false; btn.textContent=txt;
   }
 });
 
@@ -1532,7 +1557,7 @@ setInterval(()=>{$('#taxa').textContent=fmt(Math.max(taxaPorMin(),0))+'/min';},1
 let cacheTarefa='';
 function renderTarefa(){
   const el=$('#tarefa');
-  if(S.tarefa>=TAREFAS.length){ if(cacheTarefa==='fim') return; cacheTarefa='fim'; el.innerHTML=`<span class="ic">🏆</span><div class="txt">Todas as tarefas concluídas! Continue fazendo a adega crescer.</div><button id="btnTarefa">Ver</button>`; $('#btnTarefa').onclick=()=>{SOM.abrir();$('#telaPrestigio').hidden=false;}; return; }
+  if(S.tarefa>=TAREFAS.length){ if(cacheTarefa==='fim') return; cacheTarefa='fim'; el.innerHTML=`<span class="ic">🏆</span><div class="txt">Todas as tarefas concluídas! 🎁 Pegue o seu cupom de conclusão do mês.</div><button id="btnTarefa">Ver</button>`; $('#btnTarefa').onclick=()=>{SOM.abrir();$('#telaPrestigio').hidden=false;}; return; }
   const t=TAREFAS[S.tarefa], [a,b]=t.meta(), feito=a>=b;
   const html=`<span class="ic">${t.ic}</span><div class="txt">${t.txt}<div class="barra"><i style="width:${Math.min(100,100*a/b)}%"></i></div></div>`+
     (feito?`<button id="btnTarefa">Pegar</button>`:`<span class="rec"><small>🎁 Prêmio</small><b>+${fmt(t.premio*multPrest())}</b></span>`);

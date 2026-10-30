@@ -116,9 +116,10 @@ $('#btnConsultar').addEventListener('click',async()=>{
     const rows=await rpc('consultar_cupom',{p_codigo:c,p_senha:senha})||[];
     if(!rows.length){ erro(new Error('cupom_inexistente')); return; }
     const x=rows[0], usado=!!x.usado_em, venc=!usado&&new Date(x.expira_em)<new Date();
-    const r=mostrar(usado||venc?'ruim':'ok','<div class="status"></div><div class="valor"></div><dl><dt>Jogador</dt><dd class="ap"></dd><dt>Gerado em</dt><dd class="cr"></dd><dt>Validade</dt><dd class="ex"></dd></dl>');
+    const r=mostrar(usado||venc?'ruim':'ok','<div class="status"></div><div class="valor"></div><dl><dt>Tipo</dt><dd class="tp"></dd><dt>Jogador</dt><dd class="ap"></dd><dt>Gerado em</dt><dd class="cr"></dd><dt>Validade</dt><dd class="ex"></dd></dl>');
     r.querySelector('.status').textContent=usado?'✖ Já usado em '+dataHora(x.usado_em):venc?'✖ Vencido':'✔ Cupom válido';
     r.querySelector('.valor').textContent=reais(x.valor_centavos)+' de desconto';
+    r.querySelector('.tp').textContent=x.tipo==='conclusao'?'🎁 Conclusão das tarefas':'Troca de dinheiro do jogo';
     r.querySelector('.ap').textContent=x.apelido; r.querySelector('.cr').textContent=dataHora(x.criado_em); r.querySelector('.ex').textContent=dataHora(x.expira_em);
     if(!usado&&!venc){ atual=x; $('#btnUsar').disabled=false; }
     try{ sessionStorage.setItem('senhaBalcao',senha); }catch(e){}
