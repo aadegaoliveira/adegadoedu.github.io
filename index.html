@@ -1921,7 +1921,7 @@ function atualizarEntrega(dt){
   if(E.estado==='correndo'){
     E.vel=Math.min(24,11+E.dist*0.022); const avanco=E.vel*dt; E.z-=avanco; E.dist+=avanco;
     while(E.prox>E.z-62&&E.prox>-E.alvo+28){ gerarLinha(E.prox); E.prox-=rnd(10.5,15)-Math.min(3,E.dist*0.004); }
-    E.x+=(FAIXAS[E.lane]-E.x)*Math.min(1,dt*24);
+    E.x+=(FAIXAS[E.lane]-E.x)*Math.min(1,dt*18);
     if(E.bufPulo>0){ E.bufPulo-=dt; if(E.y===0&&E.vy===0){ E.vy=8.2; E.desl=0; E.bufPulo=0; } }
     if(E.y>0||E.vy>0){ E.vy-=24*dt; E.y=Math.max(0,E.y+E.vy*dt); if(E.y===0) E.vy=0; }
     if(E.desl>0) E.desl-=dt;
@@ -1950,13 +1950,13 @@ function comandoEnt(c){
   if(c==='abaixa'){ if(ENT.y>0) ENT.vy=-14; ENT.desl=0.75; }
 }
 let toqueEnt=null;
-addEventListener('pointerdown',e=>{ if(ENT.ativo) toqueEnt={x:e.clientX,y:e.clientY}; },{passive:true});
+addEventListener('pointerdown',e=>{ if(ENT.ativo) toqueEnt={x:e.clientX,y:e.clientY,usado:false}; },{passive:true});
 addEventListener('pointermove',e=>{
-  if(!ENT.ativo||!toqueEnt) return;
+  if(!ENT.ativo||!toqueEnt||toqueEnt.usado) return;
   const dx=e.clientX-toqueEnt.x, dy=e.clientY-toqueEnt.y;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<16) return;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+  toqueEnt.usado=true;
   if(Math.abs(dx)>Math.abs(dy)) comandoEnt(dx<0?'esq':'dir'); else comandoEnt(dy<0?'pula':'abaixa');
-  toqueEnt={x:e.clientX,y:e.clientY};
 },{passive:true});
 addEventListener('pointerup',()=>{ toqueEnt=null; },{passive:true});
 addEventListener('pointercancel',()=>{ toqueEnt=null; },{passive:true});
