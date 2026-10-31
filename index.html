@@ -155,6 +155,23 @@ body:not(.jogando) .cobrar{display:none !important}
 .cor.ativo{outline:4px solid #2F8FD8;outline-offset:2px}
 .acoes-pers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .lista-rk .rosto{width:30px;height:30px;border-radius:50%;border:2px solid #2A1A12;background:#FFE7A0;vertical-align:middle;margin-right:6px;object-fit:cover}
+.btn-entregas{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:6;font:900 1rem 'Nunito',sans-serif;background:#E8433A;color:#fff;border:4px solid var(--contorno);border-radius:999px;padding:10px 16px;box-shadow:0 5px 0 var(--contorno);animation:pulo 1.6s ease-in-out infinite}
+body:not(.jogando) .btn-entregas{display:none}
+#hudEnt{display:none}
+body.entregando #hudEnt{display:block}
+body.entregando .hud,body.entregando #selos,body.entregando #cobrancas,body.entregando #tarefa,body.entregando #alertaEstoque,body.entregando #pilha{display:none!important}
+.stat.destaque{background:var(--verde-claro,#DDF5E6)}
+.btn.peq{font-size:1.05rem;padding:11px 14px}
+.ent-topo{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;gap:8px;align-items:center;z-index:6}
+.ent-pista{position:relative;flex:1;height:30px;background:#fff;border:4px solid var(--contorno);border-radius:999px;box-shadow:0 4px 0 var(--contorno)}
+.ent-barra{position:absolute;left:0;top:0;bottom:0;width:0;background:#3CB371;border-radius:999px}
+.ent-moto{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:1.3rem;left:0}
+.ent-casa{position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:1.1rem}
+.ent-moedas{display:flex;gap:6px;align-items:center;font-weight:900}
+.ent-contagem{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-family:'Lilita One',sans-serif;font-size:6rem;color:#FFC93C;-webkit-text-stroke:10px #2A1A12;paint-order:stroke fill;text-shadow:0 7px 0 #2A1A12;z-index:6}
+.ent-dica{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);width:min(92vw,520px);text-align:center;background:rgba(255,255,255,.94);color:#2A1A12;border:3px solid var(--contorno);border-radius:16px;padding:10px 12px;font-weight:900;font-size:.95rem;z-index:6}
+.ped-itens{list-style:none;padding:0;margin:8px 0 10px;display:grid;gap:6px}
+.ped-itens li{background:var(--painel2);border:3px solid var(--contorno);border-radius:12px;padding:8px 12px;font-weight:900}
 #btnRanking,#btnPersonagem,#btnSair{font-size:1.15rem;padding:4px 10px;cursor:pointer}
 .abas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .aba{border:3px solid var(--contorno);border-radius:12px;background:var(--painel2);padding:8px;font-weight:900}
@@ -253,6 +270,44 @@ body:not(.jogando) .alerta{display:none}
   </div>
 </section>
 
+<button class="btn-entregas" id="btnEntregas" type="button" hidden>🛵 Entregas</button>
+
+<div id="hudEnt" aria-live="polite">
+  <div class="ent-topo">
+    <div class="ent-pista"><div class="ent-barra" id="entBarra"></div><span class="ent-moto" id="entMoto">🛵</span><span class="ent-casa">🏠</span></div>
+    <div class="pilula ent-moedas"><span>🪙</span><b id="entMoedas">0</b></div>
+    <button class="pilula" id="btnAbandonar" type="button" aria-label="Desistir da entrega">✕</button>
+  </div>
+  <div class="ent-contagem" id="contagemEnt" hidden>3</div>
+  <div class="ent-dica" id="dicaEnt" hidden>Deslize ⬅️ ➡️ para trocar de faixa · ⬆️ pular · ⬇️ abaixar</div>
+</div>
+
+<section class="tela" id="telaPedido" hidden>
+  <div class="caixa">
+    <h2 class="titulo" style="font-size:1.9rem">🛵 Pedido de entrega</h2>
+    <p class="txt">Um cliente pediu pelo WhatsApp da adega:</p>
+    <ul class="ped-itens" id="pedItens"></ul>
+    <div class="stat"><span>Pagamento (com taxa de entrega)</span><b id="pedValor">0</b></div>
+    <p class="txt" style="font-size:.85rem;color:var(--sub)">Os produtos saem do estoque da adega. Desvie dos obstáculos e pegue moedas no caminho. Se a moto bater, o pedido é perdido, mas as moedas ficam com você.</p>
+    <button class="btn" id="btnSairEntregar" type="button">Sair para entregar</button>
+    <button class="btn azul peq" id="btnOutroPedido" type="button" style="margin-top:10px">Ver outro pedido</button>
+    <button type="button" class="link-btn" id="btnFecharPedido">Voltar para a adega</button>
+  </div>
+</section>
+
+<section class="tela" id="telaFimEntrega" hidden>
+  <div class="caixa">
+    <h2 class="titulo centro" id="fimTitulo" style="font-size:2.1rem">Entrega feita!</h2>
+    <p class="txt centro" id="fimTexto"></p>
+    <div class="stat"><span>Pedido</span><b id="fimPedido">0</b></div>
+    <div class="stat"><span>Moedas</span><b id="fimMoedas">0</b></div>
+    <div class="stat destaque"><span>Total</span><b id="fimTotal">0</b></div>
+    <p class="txt centro" style="font-size:.85rem;color:var(--sub)">Entregas feitas: <b id="fimFeitas">0</b></p>
+    <button class="btn" id="btnNovaEntrega" type="button">Nova entrega</button>
+    <button type="button" class="link-btn" id="btnVoltarAdega">Voltar para a adega</button>
+  </div>
+</section>
+
 <section class="tela" id="telaRanking" hidden>
   <div class="caixa">
     <div class="cabeca"><h2 class="titulo" style="font-size:2rem">Ranking</h2><span class="pilula" id="rkEu"></span></div>
@@ -334,6 +389,7 @@ body:not(.jogando) .alerta{display:none}
 <section class="tela" id="telaPrestigio" hidden>
   <div class="caixa centro">
     <h2 class="titulo" style="font-size:2rem">Adega completa!</h2>
+    <p class="txt"><b>🛵 Novidade: as entregas de moto foram liberadas!</b> Use o botão “Entregas” para levar pedidos aos clientes e faturar ainda mais.</p>
     <p class="txt">Você cumpriu todas as tarefas da Adega do Edu. A loja continua funcionando: siga melhorando os setores, mantendo o estoque cheio e batendo recordes de faturamento.</p>
     <div class="cupom"><b>🎁 Cupom de conclusão:</b> por ter completado todas as tarefas, você pode pegar um cupom de até R$ 5,00 por mês, em produtos não alcoólicos da Adega do Edu. Ele conta dentro do limite de R$ 10,00 por mês.</div>
     <button class="btn amarelo" id="btnConclusao">Pegar meu cupom de conclusão</button>
@@ -1665,6 +1721,234 @@ $('#btnCartao').addEventListener('click',async()=>{
   finally{ b.disabled=false; }
 });
 
+// ================= Entregas de moto (liberadas após todas as tarefas) =================
+var ENT={ativo:false,estado:'',pedido:null,z:0,dist:0,alvo:520,vel:12,lane:1,x:0,y:0,vy:0,desl:0,moedas:0,valorMoeda:10,t:0,obs:[],moedasObj:[],prox:0,chegada:null};
+const FAIXAS=[-1.7,0,1.7], SEG=20, NSEG=8, FATOR_ENTREGA=1.5;
+const entregasLiberadas=()=>S&&S.tarefa>=TAREFAS.length&&!S.falido;
+const cenaEnt=new THREE.Scene();
+cenaEnt.background=new THREE.Color(0xBFE6F2); cenaEnt.fog=new THREE.Fog(0xBFE6F2,42,92);
+cenaEnt.add(new THREE.HemisphereLight(0xFFF6E8,0x7A8A6A,0.8)); cenaEnt.add(new THREE.AmbientLight(0xffffff,0.2));
+const solEnt=new THREE.DirectionalLight(0xFFF2DD,0.7); solEnt.position.set(4,10,4); solEnt.castShadow=true; solEnt.shadow.mapSize.set(1024,1024);
+Object.assign(solEnt.shadow.camera,{left:-8,right:8,top:12,bottom:-12,near:1,far:40}); cenaEnt.add(solEnt); cenaEnt.add(solEnt.target);
+const camEnt=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.1,120);
+addEventListener('resize',()=>{ camEnt.aspect=innerWidth/innerHeight; camEnt.updateProjectionMatrix(); });
+
+// ---------- Rua ----------
+const texRua=texCanvas(256,512,(c)=>{ c.fillStyle='#5E6166'; c.fillRect(0,0,256,512); for(let i=0;i<500;i++){ c.fillStyle=Math.random()<.5?'rgba(255,255,255,.04)':'rgba(0,0,0,.06)'; c.fillRect(Math.random()*256,Math.random()*512,3,3);} c.fillStyle='#F2F2F2'; [85,171].forEach(x=>{ for(let y=0;y<512;y+=128) c.fillRect(x-3,y+20,6,70); }); c.fillStyle='#F2C230'; c.fillRect(4,0,6,512); c.fillRect(246,0,6,512); });
+const texJanelas=[0,1,2].map(k=>texCanvas(128,256,(c)=>{ c.fillStyle=['#F6E7C8','#CFE8F5','#F4D0C8'][k]; c.fillRect(0,0,128,256); for(let y=18;y<240;y+=46) for(let x=14;x<120;x+=40){ c.fillStyle='#2A1A12'; c.fillRect(x-2,y-2,30,32); c.fillStyle=Math.random()<.3?'#FFE38A':'#9FD3EA'; c.fillRect(x,y,26,28);} }));
+const CORES_PREDIO=[0xF28B82,0xFBBC04,0x81C995,0x78B8E8,0xC5A3E8,0xF6AE7B,0xE8E2D0];
+const segmentos=[];
+function montarSegmento(seg){
+  while(seg.extras.children.length) seg.extras.remove(seg.extras.children[0]);
+  [-1,1].forEach(l=>{ let z=-SEG/2+1.5; while(z<SEG/2-1){ const w=rnd(3.2,5), h=rnd(3,7.5), d=rnd(3.5,5);
+      const cor=CORES_PREDIO[Math.floor(Math.random()*CORES_PREDIO.length)];
+      const tx=texJanelas[Math.floor(Math.random()*3)].clone(); tx.needsUpdate=true; tx.wrapS=tx.wrapT=THREE.RepeatWrapping; tx.repeat.set(1,Math.max(1,Math.round(h/3.5)));
+      const m=[toon(cor),toon(cor),toon(cor),toon(cor),toon(cor),toon(cor)]; m[l<0?0:1]=new THREE.MeshToonMaterial({map:tx,gradientMap:degraus});
+      const p=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); p.position.set(l*(5.6+w/2),h/2,z+d/2); p.castShadow=true; p.receiveShadow=true; seg.extras.add(p); contorno(p,0.04);
+      bloco(w+0.1,0.18,d+0.1,toon(0x2A1A12),seg.extras,l*(5.6+w/2),h+0.09,z+d/2,0.01,0.01);
+      z+=d+rnd(0.3,1.2); }
+    if(Math.random()<0.7){ const ax=l*4.6, az=rnd(-8,8); malha(new THREE.CylinderGeometry(0.06,0.08,3.2,8),toon(0x6B7074),seg.extras,ax,1.6,az); const lp=malha(ESF,toon(0xFFF2B0,{emissive:0x4A4020}),seg.extras,ax-l*0.5,3.15,az); lp.scale.set(0.22,0.12,0.22); bloco(0.6,0.06,0.08,toon(0x6B7074),seg.extras,ax-l*0.3,3.2,az); }
+    if(Math.random()<0.5){ const ax=l*4.7, az=rnd(-8,8); malha(new THREE.CylinderGeometry(0.1,0.13,1.2,8),toon(0x7A4E2C),seg.extras,ax,0.6,az); const c=malha(ESF,toon(0x5BAE5B),seg.extras,ax,1.6,az); c.scale.setScalar(0.75); contorno(c,0.03); }
+  });
+}
+for(let i=0;i<NSEG;i++){
+  const g=new THREE.Group(); cenaEnt.add(g);
+  const rua=malha(new THREE.PlaneGeometry(6.6,SEG),new THREE.MeshToonMaterial({map:texRua,gradientMap:degraus}),g,0,0,0,false); rua.rotation.x=-Math.PI/2; rua.receiveShadow=true;
+  [-1,1].forEach(l=>{ bloco(2.2,0.18,SEG,toon(0xC9C4BA),g,l*4.4,0.09,0,0.01,0.01); bloco(0.14,0.2,SEG,toon(0xE6E1D6),g,l*3.36,0.1,0,0.01,0.01); });
+  const chao=malha(new THREE.PlaneGeometry(40,SEG),toon(0xA9D98B),g,0,-0.02,0,false); chao.rotation.x=-Math.PI/2;
+  const extras=new THREE.Group(); g.add(extras);
+  const seg={g,extras}; segmentos.push(seg);
+}
+function posicionarSegmentos(){ segmentos.forEach((s,i)=>{ s.g.position.z=-i*SEG+SEG/2; montarSegmento(s); }); }
+
+// ---------- Moto com o personagem do jogador ----------
+const moto=new THREE.Group(); cenaEnt.add(moto);
+let motoCorpo=null, rodasMoto=[], piloto=null;
+function montarMoto(){
+  while(moto.children.length) moto.remove(moto.children[0]);
+  const corpo=new THREE.Group(); moto.add(corpo); motoCorpo=corpo; rodasMoto=[];
+  const vermelho=toon(0xE8433A), preto=toon(0x22252A), prata=toon(0xC9CED1);
+  [0.62,-0.62].forEach(z=>{ const r=new THREE.Group(); r.position.set(0,0.32,z); corpo.add(r);
+    const pn=malha(new THREE.CylinderGeometry(0.32,0.32,0.18,22),preto,r,0,0,0); pn.rotation.z=Math.PI/2; contorno(pn,0.02);
+    const cb=malha(new THREE.CylinderGeometry(0.14,0.14,0.2,14),prata,r,0,0,0,false); cb.rotation.z=Math.PI/2; rodasMoto.push(r); });
+  contorno(malha(geoArred(0.42,0.34,1.2,0.12),vermelho,corpo,0,0.62,0),0.02);
+  contorno(malha(geoArred(0.46,0.42,0.36,0.1),vermelho,corpo,0,0.86,-0.55),0.02);
+  bloco(0.36,0.1,0.6,preto,corpo,0,0.84,0.15,0.04,0.015);
+  bloco(0.72,0.05,0.05,preto,corpo,0,1.1,-0.62);
+  const farol=malha(ESF,toon(0xFFF6B0,{emissive:0x6A5A10}),corpo,0,0.92,-0.74,false); farol.scale.set(0.1,0.1,0.05);
+  const bau=new THREE.Group(); bau.position.set(0,1.12,0.52); corpo.add(bau);
+  const tl=texCanvas(256,256,(c)=>{ c.fillStyle='#1F4D3A'; c.fillRect(0,0,256,256); });
+  const img=new Image(); img.onload=()=>{ const cv=tl.image.getContext('2d'); cv.save(); cv.beginPath(); cv.arc(128,128,108,0,7); cv.clip(); cv.drawImage(img,20,20,216,216); cv.restore(); tl.needsUpdate=true; }; img.src=LOGO_ADEGA;
+  const mBau=toon(0x1F4D3A), mLogo=new THREE.MeshToonMaterial({map:tl,gradientMap:degraus});
+  const caixa=new THREE.Mesh(geoArred(0.62,0.54,0.56,0.06),mBau); caixa.castShadow=true; bau.add(caixa); contorno(caixa,0.02);
+  malha(new THREE.CircleGeometry(0.22,32),new THREE.MeshBasicMaterial({map:tl}),bau,0,-0.01,0.285,false);
+  bloco(0.64,0.05,0.58,toon(0xFFC93C),bau,0,0.29,0);
+  piloto=pessoaV((S.perfil&&S.perfil.visual)||VISUAL_PADRAO); piloto.position.set(0,0.42,0.12); corpo.add(piloto);
+  const u=piloto.userData; u.pE.rotation.x=-1.25; u.pD.rotation.x=-1.25; u.pE.position.z=-0.12; u.pD.position.z=-0.12;
+  const cor=CORES_ROUPA_V[normalizarVisual(S.perfil&&S.perfil.visual).corRoupa];
+  const capacete=malha(ESF,toon(cor===0xF5F5F5?0x2F8FD8:cor),u.corpo,0,1.27,0); capacete.scale.set(0.285,0.26,0.29); contorno(capacete,0.02);
+  const visor=malha(ESF,toon(0x22303A),u.corpo,0,1.24,0.13,false); visor.scale.set(0.22,0.12,0.17);
+  piloto.rotation.y=Math.PI;
+}
+
+// ---------- Obstáculos e moedas ----------
+const geoCone=new THREE.ConeGeometry(0.28,0.72,16), matCone=toon(0xFF7A1A);
+function criarObstaculo(tipo,faixa,z){
+  const g=new THREE.Group(); g.position.set(FAIXAS[faixa],0,z); cenaEnt.add(g);
+  let len=0.9;
+  if(tipo==='cone'){ [-0.3,0.3].forEach(dx=>{ contorno(malha(geoCone,matCone,g,dx,0.36,0),0.02); bloco(0.5,0.05,0.5,toon(0x22252A),g,dx,0.025,0); malha(new THREE.CylinderGeometry(0.17,0.2,0.1,16),toon(0xFFFFFF),g,dx,0.38,0,false); }); }
+  if(tipo==='caixote'){ contorno(malha(geoArred(1.2,0.75,0.85,0.06),toon(0xB9824A),g,0,0.38,0),0.02); bloco(1.22,0.1,0.87,toon(0x8B5A2B),g,0,0.38,0); }
+  if(tipo==='buraco'){ const b=malha(new THREE.CircleGeometry(0.75,24),toon(0x2B2B2B),g,0,0.02,0,false); b.rotation.x=-Math.PI/2; b.scale.set(1,0.75,1);
+    [-0.75,0.75].forEach(dx=>contorno(malha(geoCone,matCone,g,dx,0.36,0.55),0.02)); }
+  if(tipo==='barreira'){ [-0.7,0.7].forEach(dx=>malha(new THREE.CylinderGeometry(0.06,0.06,1.9,8),toon(0x6B7074),g,dx,0.95,0));
+    const tx=texCanvas(256,64,(c)=>{ for(let i=-2;i<12;i++){ c.fillStyle=i%2?'#FFFFFF':'#E8433A'; c.beginPath(); c.moveTo(i*28,0); c.lineTo(i*28+28,0); c.lineTo(i*28,64); c.lineTo(i*28-28,64); c.fill(); } c.fillStyle='#2A1A12'; c.fillRect(70,14,116,36); c.fillStyle='#FFC93C'; c.font="bold 26px Nunito, sans-serif"; c.textAlign='center'; c.textBaseline='middle'; c.fillText('OBRAS',128,33); });
+    const pl=malha(new THREE.BoxGeometry(1.6,0.5,0.08),[toon(0xE8433A),toon(0xE8433A),toon(0xE8433A),toon(0xE8433A),new THREE.MeshToonMaterial({map:tx,gradientMap:degraus}),new THREE.MeshToonMaterial({map:tx,gradientMap:degraus})],g,0,1.55,0); contorno(pl,0.02); len=0.5; }
+  if(tipo==='carro'){ const cor=[0x2F8FD8,0xF2F2F2,0xE8433A,0x3CB371,0xFFC93C][Math.floor(Math.random()*5)];
+    contorno(malha(geoArred(1.45,0.6,3.0,0.18),toon(cor),g,0,0.62,0),0.02); contorno(malha(geoArred(1.25,0.52,1.6,0.16),toon(cor),g,0,1.15,0.2),0.02);
+    bloco(1.27,0.36,1.3,toon(0x9FD3EA),g,0,1.15,0.2); [-1,1].forEach(a=>[-1,1].forEach(b=>{ const r=malha(new THREE.CylinderGeometry(0.3,0.3,0.2,16),toon(0x22252A),g,a*0.68,0.3,b*1.0); r.rotation.z=Math.PI/2; }));
+    [-0.45,0.45].forEach(dx=>{ const f=malha(ESF,toon(0xFFF6B0),g,dx,0.68,1.5,false); f.scale.set(0.14,0.09,0.04); }); len=3.0; }
+  ENT.obs.push({g,tipo,faixa,z,len});
+}
+const geoMoeda=new THREE.CylinderGeometry(0.28,0.28,0.06,24), matMoeda=toon(0xFFC93C,{emissive:0x3A2A00});
+function criarMoeda(faixa,z,y){ const m=new THREE.Mesh(geoMoeda,matMoeda); m.rotation.x=Math.PI/2; m.position.set(FAIXAS[faixa],y||0.75,z); m.castShadow=true; cenaEnt.add(m); contorno(m,0.015); ENT.moedasObj.push(m); }
+function gerarLinha(z){
+  const livres=[0,1,2]; const emb=a=>a.sort(()=>Math.random()-0.5);
+  const p=Math.random(), dif=Math.min(1,ENT.dist/ENT.alvo);
+  if(p<0.32){ emb(livres); criarObstaculo('carro',livres[0],z-1.5); if(Math.random()<0.4+dif*0.4) criarObstaculo(Math.random()<.5?'cone':'caixote',livres[1],z); }
+  else if(p<0.58){ emb(livres); const n=Math.random()<0.4+dif*0.3?2:1; for(let i=0;i<n;i++) criarObstaculo(['cone','caixote','buraco'][Math.floor(Math.random()*3)],livres[i],z); }
+  else if(p<0.8){ emb(livres); const n=Math.random()<0.5?2:1; for(let i=0;i<n;i++) criarObstaculo('barreira',livres[i],z); }
+  else { const t=Math.random()<0.5?'cone':'caixote'; [0,1,2].forEach(f=>criarObstaculo(t,f,z)); for(let k=-1;k<=1;k++) criarMoeda(1,z+k*1.2,1.9-Math.abs(k)*0.5); return; }
+  if(Math.random()<0.7){ const ocup=ENT.obs.filter(o=>Math.abs(o.z-z)<4).map(o=>o.faixa); const f=[0,1,2].find(x=>!ocup.includes(x)); if(f!==undefined) for(let k=0;k<6;k++) criarMoeda(f,z+6-k*1.4); }
+}
+function criarChegada(z){
+  const g=new THREE.Group(); g.position.z=z; cenaEnt.add(g);
+  [-1,1].forEach(l=>malha(new THREE.CylinderGeometry(0.14,0.14,4.2,10),toon(0x1F4D3A),g,l*3.3,2.1,0));
+  const tx=texCanvas(512,96,(c)=>{ c.fillStyle='#FFC93C'; c.fillRect(0,0,512,96); c.fillStyle='#2A1A12'; c.font="bold 52px Nunito, sans-serif"; c.textAlign='center'; c.textBaseline='middle'; c.fillText('🏠 Casa do cliente',256,52); });
+  contorno(malha(new THREE.BoxGeometry(6.8,0.9,0.12),[toon(0xFFC93C),toon(0xFFC93C),toon(0xFFC93C),toon(0xFFC93C),new THREE.MeshBasicMaterial({map:tx}),new THREE.MeshBasicMaterial({map:tx})],g,0,4.0,0),0.03);
+  const casa=new THREE.Group(); casa.position.set(-7.5,0,-3); g.add(casa);
+  contorno(malha(new THREE.BoxGeometry(4.5,3,4),toon(0xFFF3D6),casa,0,1.5,0),0.04);
+  const tel=malha(new THREE.ConeGeometry(3.4,1.6,4),toon(0xC2362B),casa,0,3.8,0); tel.rotation.y=Math.PI/4; contorno(tel,0.04);
+  bloco(0.9,1.6,0.1,toon(0x8B5A34),casa,2.26,0.8,0); 
+  ENT.chegada=g;
+}
+function limparPista(){ ENT.obs.forEach(o=>cenaEnt.remove(o.g)); ENT.obs=[]; ENT.moedasObj.forEach(m=>cenaEnt.remove(m)); ENT.moedasObj=[]; if(ENT.chegada){ cenaEnt.remove(ENT.chegada); ENT.chegada=null; } }
+
+// ---------- Pedido ----------
+const NOMES_ITEM={refri:'Refrigerante',agua:'Água ou suco',salgadinho:'Salgadinho',gelo:'Saco de gelo',carvao:'Carvão',mercearia:'Mercearia'};
+function novoPedido(){
+  const disp=IDS.filter(id=>S.est[id].aberta&&S.est[id].estoque>0);
+  const total=disp.reduce((a,id)=>a+S.est[id].estoque,0);
+  if(total<2) return null;
+  const n=Math.min(total,2+Math.floor(Math.random()*3)), itens={};
+  for(let k=0;k<n;k++){ const ok=disp.filter(id=>(itens[id]||0)<S.est[id].estoque); if(!ok.length) break; const id=ok[Math.floor(Math.random()*ok.length)]; itens[id]=(itens[id]||0)+1; }
+  let valor=0; Object.keys(itens).forEach(id=>valor+=valorEst(id)*itens[id]*(id==='carvao'&&Math.random()<0.45?FATOR_4KG:1));
+  return {itens,valor:Math.round(valor*FATOR_ENTREGA)};
+}
+function mostrarPedido(){
+  const p=novoPedido(), lista=$('#pedItens'); lista.innerHTML='';
+  if(!p){ ENT.pedido=null; $('#pedValor').textContent='—'; const li=document.createElement('li'); li.textContent='Não há produtos suficientes no estoque. Peça reposição ao fornecedor antes de sair para entregar.'; lista.appendChild(li); $('#btnSairEntregar').disabled=true; }
+  else { ENT.pedido=p; Object.keys(p.itens).forEach(id=>{ const li=document.createElement('li'); li.textContent=EST[id].ic+' '+p.itens[id]+'× '+NOMES_ITEM[id]; lista.appendChild(li); }); $('#pedValor').textContent=fmt(p.valor); $('#btnSairEntregar').disabled=false; }
+  $('#telaPedido').hidden=false;
+}
+$('#btnEntregas').addEventListener('click',()=>{ if(!entregasLiberadas()) return; SOM.abrir(); mostrarPedido(); });
+$('#btnOutroPedido').addEventListener('click',()=>{ SOM.abrir(); mostrarPedido(); });
+$('#btnFecharPedido').addEventListener('click',()=>{ $('#telaPedido').hidden=true; });
+
+// ---------- Corrida ----------
+function iniciarEntrega(){
+  const p=ENT.pedido; if(!p) return;
+  for(const id in p.itens){ if(S.est[id].estoque<p.itens[id]){ mostrarPedido(); return; } }
+  for(const id in p.itens){ S.est[id].estoque-=p.itens[id]; atualizarProdutos(id); }
+  salvar();
+  $('#telaPedido').hidden=true;
+  limparPista(); posicionarSegmentos(); montarMoto();
+  Object.assign(ENT,{ativo:true,estado:'contagem',t:3,z:0,dist:0,vel:11,lane:1,x:0,y:0,vy:0,desl:0,moedas:0,prox:-26,
+    alvo:480+Math.floor(Math.random()*120),valorMoeda:Math.max(1,Math.round(valorEst('refri')*0.25))});
+  criarChegada(-ENT.alvo);
+  moto.position.set(0,0,0);
+  document.body.classList.remove('jogando'); document.body.classList.add('entregando');
+  $('#dicaEnt').hidden=false; $('#entMoedas').textContent='0'; atualizarHudEnt();
+}
+$('#btnSairEntregar').addEventListener('click',()=>{ SOM.marco(); iniciarEntrega(); });
+function atualizarHudEnt(){
+  const f=Math.min(1,ENT.dist/ENT.alvo); $('#entBarra').style.width=(f*100)+'%'; $('#entMoto').style.left=(f*100)+'%';
+  $('#entMoedas').textContent=ENT.moedas;
+  const c=$('#contagemEnt'); if(ENT.estado==='contagem'){ c.hidden=false; c.textContent=ENT.t>1?Math.ceil(ENT.t-1):'Vai!'; } else c.hidden=true;
+}
+function encerrarEntrega(sucesso){
+  ENT.estado='fim';
+  const ganhoMoedas=ENT.moedas*ENT.valorMoeda, ganho=(sucesso?ENT.pedido.valor:0)+ganhoMoedas;
+  if(ganho>0){ S.din+=ganho; S.total+=ganho; registrarGanho(ganho); }
+  S.entregas=S.entregas||{feitas:0,perdidas:0};
+  if(sucesso) S.entregas.feitas++; else S.entregas.perdidas++;
+  salvar();
+  $('#fimTitulo').textContent=sucesso?'Entrega feita!':'Pedido perdido!';
+  $('#fimTexto').textContent=sucesso?'O cliente recebeu o pedido e pagou com a taxa de entrega.':'A moto bateu e os produtos do pedido se perderam. As moedas que você pegou ficam com você.';
+  $('#fimPedido').textContent=sucesso?fmt(ENT.pedido.valor):'0';
+  $('#fimMoedas').textContent=ENT.moedas+' × '+fmt(ENT.valorMoeda)+' = '+fmt(ganhoMoedas);
+  $('#fimTotal').textContent='+'+fmt(ganho);
+  $('#fimFeitas').textContent=S.entregas.feitas;
+  if(sucesso) SOM.marco(); else SOM.erro();
+  setTimeout(()=>{ $('#telaFimEntrega').hidden=false; },sucesso?600:900);
+}
+function voltarParaAdega(){
+  ENT.ativo=false; ENT.estado=''; limparPista();
+  $('#telaFimEntrega').hidden=true; $('#dicaEnt').hidden=true;
+  document.body.classList.remove('entregando'); document.body.classList.add('jogando'); atualizarHUD(true);
+}
+$('#btnVoltarAdega').addEventListener('click',voltarParaAdega);
+$('#btnNovaEntrega').addEventListener('click',()=>{ voltarParaAdega(); mostrarPedido(); });
+$('#btnAbandonar').addEventListener('click',()=>{ if(ENT.estado==='correndo'||ENT.estado==='contagem'){ ENT.estado='batida'; ENT.t=0.01; encerrarEntrega(false); } });
+
+function colide(o){
+  const dz=Math.abs(o.z-ENT.z); if(dz>o.len/2+0.55) return false;
+  if(Math.abs(FAIXAS[o.faixa]-ENT.x)>0.95) return false;
+  if(o.tipo==='carro') return true;
+  if(o.tipo==='barreira') return ENT.desl<=0;
+  return ENT.y<0.75;
+}
+function atualizarEntrega(dt){
+  const E=ENT;
+  if(E.estado==='contagem'){ E.t-=dt; if(E.t<=0){ E.estado='correndo'; setTimeout(()=>{ $('#dicaEnt').hidden=true; },3500); } }
+  if(E.estado==='correndo'){
+    E.vel=Math.min(24,11+E.dist*0.022); const avanco=E.vel*dt; E.z-=avanco; E.dist+=avanco;
+    while(E.prox>E.z-62&&E.prox>-E.alvo+28){ gerarLinha(E.prox); E.prox-=rnd(10.5,15)-Math.min(3,E.dist*0.004); }
+    E.x+=(FAIXAS[E.lane]-E.x)*Math.min(1,dt*14);
+    if(E.y>0||E.vy>0){ E.vy-=24*dt; E.y=Math.max(0,E.y+E.vy*dt); if(E.y===0) E.vy=0; }
+    if(E.desl>0) E.desl-=dt;
+    for(const o of E.obs){ if(colide(o)){ E.estado='batida'; E.t=0.9; SOM.erro&&0; break; } }
+    for(let i=E.moedasObj.length-1;i>=0;i--){ const m=E.moedasObj[i]; m.rotation.z+=dt*4;
+      if(Math.abs(m.position.z-E.z)<0.8&&Math.abs(m.position.x-E.x)<0.8&&Math.abs(m.position.y-(E.y+0.75))<1.0){ cenaEnt.remove(m); E.moedasObj.splice(i,1); E.moedas++; SOM.venda&&SOM.venda(); } }
+    for(let i=E.obs.length-1;i>=0;i--){ if(E.obs[i].z>E.z+12){ cenaEnt.remove(E.obs[i].g); E.obs.splice(i,1); } }
+    for(let i=E.moedasObj.length-1;i>=0;i--){ if(E.moedasObj[i].position.z>E.z+12){ cenaEnt.remove(E.moedasObj[i]); E.moedasObj.splice(i,1); } }
+    segmentos.forEach(s=>{ if(s.g.position.z-SEG/2>E.z+10){ s.g.position.z-=NSEG*SEG; montarSegmento(s); } });
+    rodasMoto.forEach(r=>r.rotation.x-=avanco/0.32);
+    if(E.dist>=E.alvo){ E.estado='chegou'; E.t=1.2; encerrarEntrega(true); }
+  }
+  if(E.estado==='batida'){ E.t-=dt; motoCorpo.rotation.z=Math.min(1.2,(motoCorpo.rotation.z||0)+dt*3); if(E.t<=0&&E.estado==='batida'){ encerrarEntrega(false); } }
+  if(E.estado==='chegou'){ E.vel=Math.max(0,E.vel-dt*18); E.z-=E.vel*dt; }
+  moto.position.set(E.x,E.y,E.z);
+  if(motoCorpo){ if(E.estado!=='batida') motoCorpo.rotation.z=(FAIXAS[E.lane]-E.x)*-0.18; motoCorpo.rotation.x=E.y>0?-0.15:0; piloto.userData.corpo.scale.y=E.desl>0?0.72:1; }
+  camEnt.position.set(E.x*0.55,3.4,E.z+6.6); camEnt.lookAt(E.x*0.35,1.0,E.z-7);
+  solEnt.position.set(E.x+4,10,E.z+4); solEnt.target.position.set(E.x,0,E.z-4);
+  atualizarHudEnt();
+}
+function comandoEnt(c){
+  if(!ENT.ativo||ENT.estado!=='correndo') return;
+  if(c==='esq'&&ENT.lane>0) ENT.lane--;
+  if(c==='dir'&&ENT.lane<2) ENT.lane++;
+  if(c==='pula'&&ENT.y===0){ ENT.vy=8.2; ENT.desl=0; }
+  if(c==='abaixa'){ if(ENT.y>0) ENT.vy=-14; ENT.desl=0.75; }
+}
+let toqueEnt=null;
+addEventListener('pointerdown',e=>{ if(ENT.ativo) toqueEnt={x:e.clientX,y:e.clientY}; },{passive:true});
+addEventListener('pointerup',e=>{ if(!ENT.ativo||!toqueEnt) return; const dx=e.clientX-toqueEnt.x, dy=e.clientY-toqueEnt.y; toqueEnt=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+  if(Math.abs(dx)>Math.abs(dy)) comandoEnt(dx<0?'esq':'dir'); else comandoEnt(dy<0?'pula':'abaixa'); },{passive:true});
+addEventListener('keydown',e=>{ if(!ENT.ativo) return; const k=e.key;
+  if(k==='ArrowLeft'||k==='a') comandoEnt('esq'); else if(k==='ArrowRight'||k==='d') comandoEnt('dir');
+  else if(k==='ArrowUp'||k==='w'||k===' ') comandoEnt('pula'); else if(k==='ArrowDown'||k==='s') comandoEnt('abaixa'); });
+
 // ================= Sair do jogo =================
 function mostrarSaiu(){
   document.body.classList.remove('jogando'); fecharPainel();
@@ -1728,6 +2012,7 @@ function voarNotas(p,n){
 
 // ================= HUD, selos e tarefas =================
 function atualizarHUD(pulo){
+  const be=document.getElementById('btnEntregas'); if(be) be.hidden=!entregasLiberadas();
   $('#valDin').textContent=fmt(S.din);
   if(pulo){const e=$('#dinheiro');e.classList.remove('pulo');void e.offsetWidth;e.classList.add('pulo');}
   renderTarefa(); renderSelos();
@@ -1959,6 +2244,7 @@ let proxCliente=1.0, tGerente=0, tSelos=0;
 function laco(){
   requestAnimationFrame(laco);
   const dt=Math.min(relogio.getDelta(),0.05);
+  if(ENT.ativo){ atualizarEntrega(dt); renderer.render(cenaEnt,camEnt); return; }
   if(document.body.classList.contains('jogando')){
     S.tempoJogo=(S.tempoJogo||0)+dt;
     proxCliente-=dt;
